@@ -42,25 +42,36 @@
       <div class="group">
         <label for="method">Field from landmarks</label>
         <select id="method">
-          <option value="density">Density (feature clusters)</option>
           <option value="proximity">Proximity (halo per point)</option>
+          <option value="density">Density (feature clusters)</option>
         </select>
       </div>
       <div class="group">
-        <div class="row"><label for="volume">Magnification strength</label><span class="val" id="volumeVal">4.0×</span></div>
-        <input id="volume" type="range" min="1" max="12" step="0.1" value="4" />
-      </div>
-      <div class="group">
-        <div class="row"><label for="radius">Influence radius</label><span class="val" id="radiusVal">0.18</span></div>
-        <input id="radius" type="range" min="0.05" max="0.5" step="0.01" value="0.18" />
+        <div class="row"><label for="radius">Influence radius</label><span class="val" id="radiusVal">0.22</span></div>
+        <input id="radius" type="range" min="0.05" max="0.5" step="0.01" value="0.22" />
       </div>
 
-      <div class="sec">Magnify which features</div>
-      <label class="check"><input id="use-eyes" type="checkbox" checked /> Eyes</label>
-      <label class="check"><input id="use-brows" type="checkbox" checked /> Brows</label>
-      <label class="check"><input id="use-nose" type="checkbox" checked /> Nose</label>
-      <label class="check"><input id="use-mouth" type="checkbox" checked /> Mouth</label>
-      <label class="check"><input id="use-jaw" type="checkbox" checked /> Jaw</label>
+      <div class="sec">Per-feature strength (0 = off)</div>
+      <div class="group">
+        <div class="row"><label for="str-eyes">Eyes</label><span class="val" id="str-eyesVal">6.0</span></div>
+        <input id="str-eyes" type="range" min="0" max="12" step="0.5" value="6" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="str-brows">Brows</label><span class="val" id="str-browsVal">3.0</span></div>
+        <input id="str-brows" type="range" min="0" max="12" step="0.5" value="3" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="str-nose">Nose</label><span class="val" id="str-noseVal">4.0</span></div>
+        <input id="str-nose" type="range" min="0" max="12" step="0.5" value="4" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="str-mouth">Mouth</label><span class="val" id="str-mouthVal">6.0</span></div>
+        <input id="str-mouth" type="range" min="0" max="12" step="0.5" value="6" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="str-jaw">Jaw</label><span class="val" id="str-jawVal">3.0</span></div>
+        <input id="str-jaw" type="range" min="0" max="12" step="0.5" value="3" />
+      </div>
 
       <div class="sec">Solver</div>
       <div class="group">

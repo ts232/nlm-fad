@@ -14,6 +14,7 @@ export interface Planes {
   y: Float32Array;
   vx: Float32Array; // velocity (per second)
   vy: Float32Array;
+  w?: Float32Array; // optional per-point weight (default 1) — e.g. per-feature strength
 }
 
 // Deterministic pseudo-random (no Math.random — keeps things reproducible).
@@ -71,6 +72,7 @@ export function computeDensityField(m: DiffMesh, p: Planes, volume: number, radi
   const h = 2 / (N - 1);
   const r2 = radius * radius;
   const Z_CAP = 8;
+  const pw = p.w;
   for (let r = 0; r < N; r++) {
     const ny = r * h - 1;
     for (let c = 0; c < N; c++) {
@@ -79,7 +81,7 @@ export function computeDensityField(m: DiffMesh, p: Planes, volume: number, radi
       for (let k = 0; k < p.n; k++) {
         const dx = nx - p.x[k], dy = ny - p.y[k];
         const d2 = dx * dx + dy * dy;
-        if (d2 < r2) { const w = 1 - Math.sqrt(d2) / radius; sum += w * w; } // smooth (quadratic) splat
+        if (d2 < r2) { const ww = 1 - Math.sqrt(d2) / radius; sum += ww * ww * (pw ? pw[k] : 1); } // weighted splat
       }
       const z = 1 + sum * volume;
       m.z[r * N + c] = z > Z_CAP ? Z_CAP : z;
@@ -92,18 +94,19 @@ export function computeDensityField(m: DiffMesh, p: Planes, volume: number, radi
 export function computeProximityField(m: DiffMesh, p: Planes, volume: number, maxDist: number): void {
   const N = m.N;
   const h = 2 / (N - 1);
+  const pw = p.w;
   for (let r = 0; r < N; r++) {
     const ny = r * h - 1;
     for (let c = 0; c < N; c++) {
       const nx = c * h - 1;
-      let minDist = Infinity;
+      let minD2 = Infinity, wn = 1;
       for (let k = 0; k < p.n; k++) {
         const dx = nx - p.x[k], dy = ny - p.y[k];
         const d = dx * dx + dy * dy; // compare squared; sqrt once below
-        if (d < minDist) minDist = d;
+        if (d < minD2) { minD2 = d; wn = pw ? pw[k] : 1; } // weight of the nearest point
       }
-      minDist = Math.sqrt(minDist);
-      m.z[r * N + c] = minDist > maxDist ? 1 : 1 + Math.tanh(maxDist - minDist) * volume;
+      const minDist = Math.sqrt(minD2);
+      m.z[r * N + c] = minDist > maxDist ? 1 : 1 + Math.tanh(maxDist - minDist) * volume * wn;
     }
   }
 }

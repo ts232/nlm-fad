@@ -105,36 +105,44 @@ function uploadImage(img: HTMLImageElement): void {
 // State
 // ---------------------------------------------------------------------------
 const params: DiffParams = { ...DEFAULT_DIFF };
-let points: Planes = { n: 0, x: new Float32Array(0), y: new Float32Array(0), vx: new Float32Array(0), vy: new Float32Array(0) };
+let points: Planes = { n: 0, x: new Float32Array(0), y: new Float32Array(0), w: new Float32Array(0), vx: new Float32Array(0), vy: new Float32Array(0) };
+type FeatureKey = "eyes" | "brows" | "nose" | "mouth" | "jaw";
 const ui = {
   running: true, itersPerFrame: 20,
-  method: "density" as "density" | "proximity",
-  volume: 4, radius: 0.18,
+  method: "proximity" as "density" | "proximity",
+  radius: 0.22,
   showImage: true, showField: false, showMesh: true, showPoints: true,
-  use: { eyes: true, brows: true, nose: true, mouth: true, jaw: true },
+  // per-feature magnification strength (0 = ignore that feature)
+  str: { eyes: 6, brows: 3, nose: 4, mouth: 6, jaw: 3 } as Record<FeatureKey, number>,
 };
 let fieldDirty = true;
 let features: FaceFeatures | null = null; // grouped landmarks from the last detect
 
-// Compose the active data points from the selected feature groups.
+// Compose the data points from the feature groups, each carrying its group's
+// strength as a per-point weight, so the field magnifies features differentially.
 function rebuildPoints(): void {
   if (!features) return;
   const pts: { x: number; y: number }[] = [];
-  if (ui.use.eyes) pts.push(...features.leftEye, ...features.rightEye);
-  if (ui.use.brows) pts.push(...features.leftBrow, ...features.rightBrow);
-  if (ui.use.nose) pts.push(...features.nose);
-  if (ui.use.mouth) pts.push(...features.mouth);
-  if (ui.use.jaw) pts.push(...features.jaw);
-  setPoints(pts);
+  const ws: number[] = [];
+  const add = (arr: { x: number; y: number }[], strength: number) => {
+    if (strength <= 0) return;
+    for (const p of arr) { pts.push(p); ws.push(strength); }
+  };
+  add([...features.leftEye, ...features.rightEye], ui.str.eyes);
+  add([...features.leftBrow, ...features.rightBrow], ui.str.brows);
+  add(features.nose, ui.str.nose);
+  add(features.mouth, ui.str.mouth);
+  add(features.jaw, ui.str.jaw);
+  setPoints(pts, ws);
   setStatus(`${pts.length} landmark points`);
 }
 
-function setPoints(pts: { x: number; y: number }[]): void {
+function setPoints(pts: { x: number; y: number }[], weights?: number[]): void {
   const n = Math.min(pts.length, MAX_PTS);
-  const x = new Float32Array(n), y = new Float32Array(n);
-  for (let i = 0; i < n; i++) { x[i] = pts[i].x; y[i] = pts[i].y; }
-  points = { n, x, y, vx: new Float32Array(n), vy: new Float32Array(n) };
-  resetPositions(mesh); // start the relaxation fresh for the new face
+  const x = new Float32Array(n), y = new Float32Array(n), w = new Float32Array(n);
+  for (let i = 0; i < n; i++) { x[i] = pts[i].x; y[i] = pts[i].y; w[i] = weights ? weights[i] : 1; }
+  points = { n, x, y, w, vx: new Float32Array(n), vy: new Float32Array(n) };
+  resetPositions(mesh); // start the relaxation fresh for the new point set
   fieldDirty = true;
 }
 function syncPos(): void {
@@ -144,8 +152,9 @@ function syncPos(): void {
 function syncZ(): void { gl.bindBuffer(gl.ARRAY_BUFFER, zBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.z); }
 function computeField(): void {
   if (points.n === 0) mesh.z.fill(1);
-  else if (ui.method === "density") computeDensityField(mesh, points, ui.volume, ui.radius);
-  else computeProximityField(mesh, points, ui.volume, ui.radius);
+  // strength is carried per-point (per feature) in points.w, so volume = 1 here
+  else if (ui.method === "density") computeDensityField(mesh, points, 1, ui.radius);
+  else computeProximityField(mesh, points, 1, ui.radius);
   syncZ(); fieldDirty = false;
 }
 
@@ -176,7 +185,9 @@ function draw(ptCount: number): void {
   resize();
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.07, 0.07, 0.08, 1); gl.clear(gl.COLOR_BUFFER_BIT);
-  gl.useProgram(prog); gl.uniform1f(loc.u_maxZ, Math.max(2, 1 + ui.volume));
+  gl.useProgram(prog);
+  const maxStr = Math.max(ui.str.eyes, ui.str.brows, ui.str.nose, ui.str.mouth, ui.str.jaw);
+  gl.uniform1f(loc.u_maxZ, Math.max(2, 1 + maxStr));
   gl.bindVertexArray(vao);
   if (ui.showImage) {
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texture);
@@ -237,8 +248,10 @@ function bindSlider(id: string, set: (v: number) => void, fmtId: string, fmt?: (
   const update = () => { const v = parseFloat(s.value); set(v); el(fmtId).textContent = fmt ? fmt(v) : v.toFixed(2); };
   s.addEventListener("input", update); update();
 }
-bindSlider("volume", (v) => { ui.volume = v; fieldDirty = true; }, "volumeVal", (v) => `${v.toFixed(1)}×`);
 bindSlider("radius", (v) => { ui.radius = v; fieldDirty = true; }, "radiusVal");
+for (const key of ["eyes", "brows", "nose", "mouth", "jaw"] as FeatureKey[]) {
+  bindSlider(`str-${key}`, (v) => { ui.str[key] = v; rebuildPoints(); }, `str-${key}Val`, (v) => v.toFixed(1));
+}
 bindSlider("refine", (v) => (params.refineCoeff = v), "refineVal");
 bindSlider("clampEps", (v) => (params.clampEps = v), "clampEpsVal");
 bindSlider("iters", (v) => (ui.itersPerFrame = Math.round(v)), "itersVal", (v) => String(Math.round(v)));
@@ -251,13 +264,6 @@ el<HTMLInputElement>("showField").addEventListener("change", (e) => { ui.showFie
 el<HTMLInputElement>("showMesh").addEventListener("change", (e) => { ui.showMesh = (e.target as HTMLInputElement).checked; });
 el<HTMLInputElement>("showPoints").addEventListener("change", (e) => { ui.showPoints = (e.target as HTMLInputElement).checked; });
 
-// Feature-group selectors — which typed landmarks become the data points.
-for (const key of ["eyes", "brows", "nose", "mouth", "jaw"] as const) {
-  el<HTMLInputElement>(`use-${key}`).addEventListener("change", (e) => {
-    ui.use[key] = (e.target as HTMLInputElement).checked;
-    rebuildPoints();
-  });
-}
 
 const runBtn = el<HTMLButtonElement>("run");
 function syncRun() { runBtn.textContent = ui.running ? "Pause" : "Play"; }

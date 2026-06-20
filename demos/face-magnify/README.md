@@ -21,13 +21,15 @@ npm run dev      # → http://localhost:1998  (pinned port)
   Entoptica's `src/core/field/faceApi.ts`. Runs on **TensorFlow.js's WebGL (GPU)
   backend** — not WebAssembly. `detectAllFaces(img).withFaceLandmarks()` → 68
   points per face, **grouped by feature** and normalized to mesh space `[-1,1]`.
-- **Feature selection** — the 68 landmarks are typed (face-api's
-  `getMouth/getLeftEye/getNose/getJawOutline/…`), so checkboxes pick which groups
-  (eyes / brows / nose / mouth / jaw) become the data points. Magnify just the
-  eyes, just the mouth, etc.
-- **Field from the landmarks** — the same `field.ts` used by `data-flow`: a
-  **density** splat (feature clusters → magnification) or **proximity** halos.
-  The selected points cluster at their features, so those regions get the field.
+- **Per-feature strength** — the 68 landmarks are typed (face-api's
+  `getMouth/getLeftEye/getNose/getJawOutline/…`), so each group (eyes / brows /
+  nose / mouth / jaw) has its own **strength slider** (0 = ignore). Each landmark
+  carries its group's strength as a per-point weight, so features magnify
+  differentially — e.g. eyes 6, mouth 6, jaw 0 for a wide-eyed, big-mouthed look.
+- **Field from the landmarks** — the same `field.ts` used by `data-flow`:
+  **proximity** (a halo per point, scaled by its weight — the default, stable) or
+  **density** (a kernel splat that *sums*, so clusters can over-deform; available
+  but spikier). Proximity near a point gives `z = 1 + tanh(radius − dist)·weight`.
 - **Solve + render** — `diffuse.ts` (Engine B) relaxes the mesh to the field;
   the face image rides the warp, with the landmark points and mesh overlaid.
 
