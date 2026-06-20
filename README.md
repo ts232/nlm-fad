@@ -52,9 +52,24 @@ cd demos/face-magnify  && npm install && npm run dev   # → http://localhost:19
 Each demo has its own pinned port (the year of the relevant paper), so they
 never collide and can run side by side.
 
-## Status
+## Status — checkpoint 2026-06-20
 
-Both engines are prototyped as standalone demos. Next candidates: multi-scale
-(stride) convergence for the solver, data-driven field sources (`MeshMag`), 3D,
-and defining the `warp.ts`/`diffuse.ts` → Entoptica `src/core` build-op
-interface. See `NLM-ORIENTATION.md` §8–9.
+**Both engines are working, across four standalone demos** (ports 1995–1998).
+The through-line: **one solver (`diffuse.ts`) + one field module (`field.ts`);
+each Engine-B demo only swaps where the magnification field comes from** — painted
+→ moving data → image features. Highlights: closed-form fisheye with a linear
+(constant-magnification) legible centre and arbitrary-aspect / large-texture
+support; a paint-a-field diffusion solver (tuned ~2.5–4× faster than the original
+defaults); a data-driven "traffic over a zone"; and face-feature magnification
+with per-feature strength from face-api landmarks.
+
+Empirical findings worth remembering: the diffusion's speed lever is the per-step
+clamp (`clampEps`), not damping; **multi-scale `stride` does *not* help** (the
+relaxation is rate-limited, not propagation-limited); and `proximity` is the
+stable field choice (`density` sums and over-deforms).
+
+Next candidates: per-feature radius; other feature sources (edges / saliency /
+corners — same template); 3D (`trans3D` / `mag3D`); and defining the
+`warp.ts` / `diffuse.ts` / `field.ts` → Entoptica `src/core` build-op interface.
+See `NLM-ORIENTATION.md` §8–9. Project conventions for contributors (and Claude
+Code): `CLAUDE.md`.

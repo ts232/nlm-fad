@@ -14,6 +14,8 @@ An orientation to the **FAD toolkit** — the C/C++ implementation of nonlinear 
 
 > status: `draft` — generated from a code orientation pass, not yet human-reviewed. The math citations were spot-checked against source; the related-work citations are from memory and should be verified before any are cited in a paper.
 
+> **Built so far (checkpoint 2026-06-20).** Both engines are working across **four standalone demos** — `fisheye-2d` (closed-form, port 1995), `diffusion-mag` (paint-a-field, 1996), `data-flow` (data-driven planes, 1997), `face-magnify` (face-landmark features, 1998). The arc is one solver + one field module with a **swappable field source** (paint → data → image features). Per-demo write-ups in §8; project conventions in `CLAUDE.md`. The §5 numerical-methods primer and §6 related work are the durable reference; §8–9 track the build and open questions.
+
 ---
 
 ## 1. What FAD is, and where it lives
