@@ -35,6 +35,10 @@ Its own git repo (separate from Entoptica). The original FAD C/C++ source is
 - **[`demos/data-flow/`](demos/data-flow/README.md)** — Engine B, **data-driven**:
   planes fly over a zone, their density/proximity *becomes* the field, the mesh
   follows the traffic. Reuses the solver; only the field source changes. Port 1997.
+- **[`demos/face-magnify/`](demos/face-magnify/README.md)** — Engine B, **image
+  features**: a face is detected (face-api 68 landmarks), the landmarks are the
+  data points, and the eyes/nose/mouth magnify. Same solver; the field source is
+  now features extracted from an image. Port 1998.
 
 ## Run a demo
 
@@ -42,6 +46,7 @@ Its own git repo (separate from Entoptica). The original FAD C/C++ source is
 cd demos/fisheye-2d    && npm install && npm run dev   # → http://localhost:1995
 cd demos/diffusion-mag && npm install && npm run dev   # → http://localhost:1996
 cd demos/data-flow     && npm install && npm run dev   # → http://localhost:1997
+cd demos/face-magnify  && npm install && npm run dev   # → http://localhost:1998
 ```
 
 Each demo has its own pinned port (the year of the relevant paper), so they

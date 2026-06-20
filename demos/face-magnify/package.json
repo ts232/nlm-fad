@@ -1,0 +1,9 @@
+{
+  "name": "fad-face-magnify",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Standalone demo: magnify a face from its landmarks (face-api 68pt → data-driven diffusion magnification)",
+  "scripts": { "dev": "vite", "build": "vite build", "preview": "vite preview" },
+  "devDependencies": { "typescript": "^6.0.3", "vite": "^6.4.2" }
+}
