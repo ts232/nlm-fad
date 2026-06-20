@@ -32,12 +32,16 @@ Its own git repo (separate from Entoptica). The original FAD C/C++ source is
 - **[`demos/diffusion-mag/`](demos/diffusion-mag/README.md)** — Engine B: paint a
   magnification field and watch a mesh relax to satisfy it (area-based diffusion
   solver). Portable core: `demos/diffusion-mag/src/diffuse.ts`. Port 1996.
+- **[`demos/data-flow/`](demos/data-flow/README.md)** — Engine B, **data-driven**:
+  planes fly over a zone, their density/proximity *becomes* the field, the mesh
+  follows the traffic. Reuses the solver; only the field source changes. Port 1997.
 
 ## Run a demo
 
 ```bash
-cd demos/fisheye-2d   && npm install && npm run dev   # → http://localhost:1995
+cd demos/fisheye-2d    && npm install && npm run dev   # → http://localhost:1995
 cd demos/diffusion-mag && npm install && npm run dev   # → http://localhost:1996
+cd demos/data-flow     && npm install && npm run dev   # → http://localhost:1997
 ```
 
 Each demo has its own pinned port (the year of the relevant paper), so they

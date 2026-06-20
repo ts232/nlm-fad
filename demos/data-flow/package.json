@@ -1,0 +1,16 @@
+{
+  "name": "fad-data-flow",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Standalone demo: data-driven magnification (aircraft density over a zone) — TS port of FAD apps/2d",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^6.4.2"
+  }
+}

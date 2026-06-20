@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FAD · Data-driven magnification (traffic over a zone)</title>
+    <style>
+      :root { --bg:#0f0f12; --panel:#17171b; --line:#2a2a31; --fg:#d7d7db; --muted:#8a8a93; --accent:#c81e3c; }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body { background: var(--bg); color: var(--fg); font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+             display: grid; grid-template-columns: 1fr 268px; height: 100vh; }
+      #stage { display: grid; place-items: center; padding: 16px; min-width: 0; min-height: 0; }
+      #gl { width: min(100%, 100vh - 32px); aspect-ratio: 1/1; background:#000; border:1px solid var(--line); border-radius:4px; }
+      #panel { background: var(--panel); border-left: 1px solid var(--line); padding: 18px 16px; overflow-y: auto; }
+      h1 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+      .sub { color: var(--muted); font-size: 11px; margin-bottom: 16px; }
+      .group { margin-bottom: 14px; }
+      .sec { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; margin: 4px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+      label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .val { color: var(--fg); font-variant-numeric: tabular-nums; font-size: 12px; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      select, button { width: 100%; background:#202027; color:var(--fg); border:1px solid var(--line); border-radius:4px; padding:6px 8px; font:inherit; }
+      button { cursor: pointer; } button:hover { border-color: var(--muted); }
+      .btns { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+      .check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--fg); font-size: 12px; }
+      .check input { accent-color: var(--accent); }
+      .readout { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 6px; }
+      .readout b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 500; }
+      .hint { color: var(--muted); font-size: 11px; margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas id="gl"></canvas></div>
+
+    <aside id="panel">
+      <h1>Data-driven magnification</h1>
+      <div class="sub">FAD <code>apps/2d</code> · the field comes from the data</div>
+
+      <div class="sec">Data</div>
+      <div class="group">
+        <label for="method">Field from</label>
+        <select id="method">
+          <option value="density">Density (traffic per cell)</option>
+          <option value="proximity">Proximity (halo per plane)</option>
+        </select>
+      </div>
+      <div class="group">
+        <div class="row"><label for="count">Planes</label><span class="val" id="countVal">160</span></div>
+        <input id="count" type="range" min="10" max="500" step="1" value="160" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="speed">Speed</label><span class="val" id="speedVal">1.00</span></div>
+        <input id="speed" type="range" min="0" max="3" step="0.05" value="1" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="volume">Magnification strength</label><span class="val" id="volumeVal">4.0×</span></div>
+        <input id="volume" type="range" min="1" max="12" step="0.1" value="4" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="radius">Influence radius</label><span class="val" id="radiusVal">0.20</span></div>
+        <input id="radius" type="range" min="0.05" max="0.6" step="0.01" value="0.2" />
+      </div>
+
+      <div class="sec">Solver</div>
+      <div class="group">
+        <div class="row"><label for="refine">Refine coeff (rate)</label><span class="val" id="refineVal">0.50</span></div>
+        <input id="refine" type="range" min="0.05" max="0.8" step="0.01" value="0.5" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="clampEps">Step cap</label><span class="val" id="clampEpsVal">0.25</span></div>
+        <input id="clampEps" type="range" min="0.05" max="0.4" step="0.01" value="0.25" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="iters">Iterations / frame</label><span class="val" id="itersVal">18</span></div>
+        <input id="iters" type="range" min="1" max="40" step="1" value="18" />
+      </div>
+      <div class="btns">
+        <button id="run">Pause</button>
+        <button id="reseed">Re-seed</button>
+        <button id="resetMesh">Reset mesh</button>
+      </div>
+      <div class="readout"><span>RMS magnification error</span><b id="rms">0.000</b></div>
+
+      <div class="sec">Display</div>
+      <label class="check"><input id="showImage" type="checkbox" checked /> Zone map</label>
+      <label class="check"><input id="showField" type="checkbox" /> Field (heat overlay)</label>
+      <label class="check"><input id="showMesh" type="checkbox" checked /> Mesh</label>
+      <label class="check"><input id="showPlanes" type="checkbox" checked /> Planes</label>
+
+      <div class="hint">Planes fly over the zone; their density becomes the magnification field, and the mesh continuously relaxes to follow the traffic. The planes ride the warp, so clusters visibly spread apart.</div>
+    </aside>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
