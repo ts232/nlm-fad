@@ -260,10 +260,41 @@ function paintAt(e: PointerEvent): void {
   if (paintField(mesh, cx, cy, ui.brushRadius, ui.brushStrength, ui.minZ, ui.maxZ, ui.brushMode))
     syncZ();
 }
+// Brush-size ring that follows the cursor over the canvas (and is tinted by the
+// current mode, so you can see which brush is active before clicking).
+const ring = el<HTMLDivElement>("brushring");
+let lastClientX = 0, lastClientY = 0;
+function ringColor(): string {
+  return ui.brushMode === "magnify" ? "rgba(216,84,72,0.95)"   // warm
+    : ui.brushMode === "minify" ? "rgba(70,130,205,0.95)"      // cool
+    : "rgba(208,208,212,0.9)";                                 // neutral (erase)
+}
+function updateRing(clientX: number, clientY: number): void {
+  lastClientX = clientX; lastClientY = clientY;
+  const rect = canvas.getBoundingClientRect();
+  // brushRadius is in clip units (fraction of half-width); clip [-1,1] spans the
+  // canvas width, so screen diameter = brushRadius * width.
+  const d = ui.brushRadius * rect.width;
+  ring.style.width = `${d}px`;
+  ring.style.height = `${d}px`;
+  ring.style.left = `${clientX}px`;
+  ring.style.top = `${clientY}px`;
+  ring.style.borderColor = ringColor();
+  ring.style.display = "block";
+}
+
 canvas.addEventListener("pointerdown", (e) => {
-  painting = true; canvas.setPointerCapture(e.pointerId); paintAt(e);
+  painting = true;
+  try { canvas.setPointerCapture(e.pointerId); } catch { /* capture is best-effort */ }
+  updateRing(e.clientX, e.clientY);
+  paintAt(e); // paint on the very first press, capture or not
 });
-canvas.addEventListener("pointermove", (e) => { if (painting) paintAt(e); });
+canvas.addEventListener("pointermove", (e) => {
+  updateRing(e.clientX, e.clientY);
+  if (painting) paintAt(e);
+});
+canvas.addEventListener("pointerenter", (e) => updateRing(e.clientX, e.clientY));
+canvas.addEventListener("pointerleave", () => { if (!painting) ring.style.display = "none"; });
 function endPaint(e: PointerEvent): void {
   if (!painting) return;
   painting = false;
@@ -292,17 +323,25 @@ function bindSlider(id: string, set: (v: number) => void, fmtId: string, fmt?: (
   s.addEventListener("input", update); update();
 }
 
-bindSlider("brushRadius", (v) => (ui.brushRadius = v), "brushRadiusVal");
+bindSlider("brushRadius", (v) => {
+  ui.brushRadius = v;
+  if (ring.style.display === "block") updateRing(lastClientX, lastClientY);
+}, "brushRadiusVal");
 bindSlider("brushStrength", (v) => (ui.brushStrength = v), "brushStrengthVal");
 bindSlider("maxZ", (v) => (ui.maxZ = v), "maxZVal", (v) => `${v.toFixed(1)}×`);
 bindSlider("refine", (v) => (params.refineCoeff = v), "refineVal");
 bindSlider("iters", (v) => (ui.itersPerFrame = Math.round(v)), "itersVal", (v) => String(Math.round(v)));
 
 el<HTMLSelectElement>("brushMode").addEventListener("change", (e) => {
-  ui.brushMode = (e.target as HTMLSelectElement).value as typeof ui.brushMode;
+  const t = e.target as HTMLSelectElement;
+  ui.brushMode = t.value as typeof ui.brushMode;
+  t.blur(); // drop focus so the next canvas press registers immediately
+  if (ring.style.display === "block") ring.style.borderColor = ringColor();
 });
 el<HTMLSelectElement>("weight").addEventListener("change", (e) => {
-  params.weightByMag = parseInt((e.target as HTMLSelectElement).value, 10);
+  const t = e.target as HTMLSelectElement;
+  params.weightByMag = parseInt(t.value, 10);
+  t.blur();
 });
 el<HTMLInputElement>("pin").addEventListener("change", (e) => {
   params.pinBoundary = (e.target as HTMLInputElement).checked;
@@ -312,9 +351,10 @@ el<HTMLInputElement>("showField").addEventListener("change", (e) => { ui.showFie
 el<HTMLInputElement>("showMesh").addEventListener("change", (e) => { ui.showMesh = (e.target as HTMLInputElement).checked; });
 
 el<HTMLSelectElement>("source").addEventListener("change", (e) => {
-  const v = (e.target as HTMLSelectElement).value;
-  if (v === "metro") loadURL("/dcMetro.png");
-  else if (v === "test") uploadImage(makeTestPattern());
+  const t = e.target as HTMLSelectElement;
+  if (t.value === "metro") loadURL("/dcMetro.png");
+  else if (t.value === "test") uploadImage(makeTestPattern());
+  t.blur();
 });
 
 const runBtn = el<HTMLButtonElement>("run");

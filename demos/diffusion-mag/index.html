@@ -43,10 +43,17 @@
       .readout { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 6px; }
       .readout b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 500; }
       .hint { color: var(--muted); font-size: 11px; margin-top: 12px; }
+      #brushring {
+        position: fixed; display: none; pointer-events: none; z-index: 10;
+        border: 1.5px solid rgba(255, 255, 255, 0.85); border-radius: 50%;
+        transform: translate(-50%, -50%);
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45), inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+      }
     </style>
   </head>
   <body>
     <div id="stage"><canvas id="gl"></canvas></div>
+    <div id="brushring"></div>
 
     <aside id="panel">
       <h1>Diffusion magnification</h1>
