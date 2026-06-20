@@ -1,0 +1,16 @@
+{
+  "name": "fad-fisheye-2d",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Standalone demo: closed-form 2D nonlinear-magnification fisheye (TS port of FAD trans2D)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^6.4.2"
+  }
+}

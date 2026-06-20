@@ -1,0 +1,14 @@
+# dependencies / build output
+node_modules/
+dist/
+.vite/
+
+# The FAD symlink points to the licensed Magnivista C++ source in iCloud.
+# It is a local, machine-specific pointer and is NOT redistributed in this repo.
+/FAD
+
+# macOS
+.DS_Store
+
+# logs
+*.log
