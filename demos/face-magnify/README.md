@@ -18,12 +18,16 @@ npm run dev      # → http://localhost:1998  (pinned port)
 
 - **Landmarks** (`src/faceApi.ts`) — loads **face-api.js@0.22.2** + TinyFaceDetector
   / 68-landmark weights from local `/public` assets (vendored, no CDN), mirroring
-  Entoptica's `src/core/field/faceApi.ts`. `detectAllFaces(img).withFaceLandmarks()`
-  → 68 points per face, normalized to mesh space `[-1,1]`.
+  Entoptica's `src/core/field/faceApi.ts`. Runs on **TensorFlow.js's WebGL (GPU)
+  backend** — not WebAssembly. `detectAllFaces(img).withFaceLandmarks()` → 68
+  points per face, **grouped by feature** and normalized to mesh space `[-1,1]`.
+- **Feature selection** — the 68 landmarks are typed (face-api's
+  `getMouth/getLeftEye/getNose/getJawOutline/…`), so checkboxes pick which groups
+  (eyes / brows / nose / mouth / jaw) become the data points. Magnify just the
+  eyes, just the mouth, etc.
 - **Field from the landmarks** — the same `field.ts` used by `data-flow`: a
   **density** splat (feature clusters → magnification) or **proximity** halos.
-  68 points cluster at the eyes (6 each), nose (9), mouth (20), jaw (17), so
-  those regions get the highest field.
+  The selected points cluster at their features, so those regions get the field.
 - **Solve + render** — `diffuse.ts` (Engine B) relaxes the mesh to the field;
   the face image rides the warp, with the landmark points and mesh overlaid.
 
@@ -39,7 +43,7 @@ So the *only* thing different from the planes demo is the field **source**:
 
 ## Notes
 
-- Detection runs in-browser on load (~1–2 s the first time: model fetch + WASM).
+- Detection runs in-browser on load (~1–2 s the first time: model fetch + TF.js WebGL init).
   Status is shown in the panel ("N landmarks", "no face found", etc.).
 - Best on a reasonably front-facing, well-lit face (TinyFaceDetector). Profile /
   tiny / occluded faces may not detect.

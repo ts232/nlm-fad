@@ -4,7 +4,7 @@
 
 import { makeDiffMesh, diffuseStep, resetPositions, DEFAULT_DIFF, type DiffMesh, type DiffParams } from "./diffuse";
 import { computeDensityField, computeProximityField, warpLookup, type Planes } from "./field";
-import { detectLandmarks } from "./faceApi";
+import { detectFaces, type FaceFeatures } from "./faceApi";
 
 const canvas = document.getElementById("gl") as HTMLCanvasElement;
 const gl = canvas.getContext("webgl2", { antialias: true, premultipliedAlpha: false })!;
@@ -111,8 +111,23 @@ const ui = {
   method: "density" as "density" | "proximity",
   volume: 4, radius: 0.18,
   showImage: true, showField: false, showMesh: true, showPoints: true,
+  use: { eyes: true, brows: true, nose: true, mouth: true, jaw: true },
 };
 let fieldDirty = true;
+let features: FaceFeatures | null = null; // grouped landmarks from the last detect
+
+// Compose the active data points from the selected feature groups.
+function rebuildPoints(): void {
+  if (!features) return;
+  const pts: { x: number; y: number }[] = [];
+  if (ui.use.eyes) pts.push(...features.leftEye, ...features.rightEye);
+  if (ui.use.brows) pts.push(...features.leftBrow, ...features.rightBrow);
+  if (ui.use.nose) pts.push(...features.nose);
+  if (ui.use.mouth) pts.push(...features.mouth);
+  if (ui.use.jaw) pts.push(...features.jaw);
+  setPoints(pts);
+  setStatus(`${pts.length} landmark points`);
+}
 
 function setPoints(pts: { x: number; y: number }[]): void {
   const n = Math.min(pts.length, MAX_PTS);
@@ -199,9 +214,10 @@ function loadFace(src: string | File): void {
     uploadImage(img);
     setStatus("detecting face…");
     try {
-      const pts = await detectLandmarks(img);
-      setPoints(pts);
-      setStatus(pts.length ? `${pts.length} landmarks · ${pts.length / 68 | 0} face(s)` : "no face found");
+      const { features: f, faces } = await detectFaces(img);
+      features = f;
+      if (faces === 0) { setPoints([]); setStatus("no face found"); }
+      else rebuildPoints(); // composes selected feature groups, sets the status
     } catch (e) { setStatus("face detection failed (see console)"); console.error(e); }
     if (typeof src !== "string") URL.revokeObjectURL(img.src);
   };
@@ -234,6 +250,14 @@ el<HTMLInputElement>("showImage").addEventListener("change", (e) => { ui.showIma
 el<HTMLInputElement>("showField").addEventListener("change", (e) => { ui.showField = (e.target as HTMLInputElement).checked; });
 el<HTMLInputElement>("showMesh").addEventListener("change", (e) => { ui.showMesh = (e.target as HTMLInputElement).checked; });
 el<HTMLInputElement>("showPoints").addEventListener("change", (e) => { ui.showPoints = (e.target as HTMLInputElement).checked; });
+
+// Feature-group selectors — which typed landmarks become the data points.
+for (const key of ["eyes", "brows", "nose", "mouth", "jaw"] as const) {
+  el<HTMLInputElement>(`use-${key}`).addEventListener("change", (e) => {
+    ui.use[key] = (e.target as HTMLInputElement).checked;
+    rebuildPoints();
+  });
+}
 
 const runBtn = el<HTMLButtonElement>("run");
 function syncRun() { runBtn.textContent = ui.running ? "Pause" : "Play"; }
