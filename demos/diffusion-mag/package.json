@@ -1,0 +1,16 @@
+{
+  "name": "fad-diffusion-mag",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "description": "Standalone demo: area-based diffusion magnification (paint a field, watch the mesh solve) — TS port of FAD MeshDiff",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3",
+    "vite": "^6.4.2"
+  }
+}

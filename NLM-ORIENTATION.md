@@ -209,7 +209,7 @@ FAD sits at the intersection of two literatures; grounding both is the point of 
 
 **Sequencing:**
 1. **Closed-form interactive fisheye (done — §8.1).** Engine A → live lens on a grid/image.
-2. **Diffusion field-solver.** Engine B → "paint a magnification field, watch the mesh solve." The more novel, less-seen-on-the-web piece; also where the §5 upgrades (convergence test, multigrid) would land.
+2. **Diffusion field-solver (prototyped — §8.3).** Engine B → "paint a magnification field, watch the mesh solve." The more novel, less-seen-on-the-web piece; also where the §5 upgrades (convergence test, multigrid) would land.
 3. **3D** (`trans3D` / `mag3D`) later.
 
 ### 8.1 First beachhead — `demos/fisheye-2d/` ✅
@@ -222,6 +222,10 @@ A standalone Vite + TS + WebGL2 demo of Engine A: a radial fisheye focus over a 
 ### 8.2 Why this belongs in Entoptica
 
 [[FIELD-THEORY]]: *"stateful points that begin on a regular grid and are free to leave it; legibility is a dial (a spring back home)."* FAD's diffusion warping is **literally** that — a regular grid of points displaced off-grid by a field, with `refineCoeff` playing the damping/spring role and the filter-weight playing the legibility dial. Nonlinear magnification is a **principled, invertible build-op** for the field-theory vocabulary: magnification-as-transform, focus as control, a target field as the source. The `theme`/`texture` apps (semantic, color-mapped magnification) are the dataviz bridge already flagged in [[project-field-theory-dataviz]].
+
+### 8.3 Second prototype — `demos/diffusion-mag/` ✅
+
+Engine B as its own prototype (separate control space — you *paint a field*, you don't aim a lens). `src/diffuse.ts` is a faithful, dependency-free port of `MeshDiff::EnergyDiffuse` + `MoveNeighbour`: measure each node's area-ratio error, damp/clamp, diffuse it to the four neighbours (push-apart / pull-together), serpentine sweep, pinned boundary. A WebGL2 renderer runs the CPU solver live (≈25 sweeps/frame) and shows the deforming textured mesh + grid lines + a heat overlay of the field, with brush controls (magnify/minify/erase), solver controls (`refineCoeff`, iters/frame, weighting, pin), and an RMS-error readout. Pinned port **1996** (the InfoVis-paper year). Verified: small/modest fields converge to target almost exactly; large high-mag regions plateau by area conservation (correct physics). Not yet: multi-scale `stride`, data-driven field sources (`MeshMag` density/proximity), non-square aspect.
 
 ---
 

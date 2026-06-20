@@ -26,18 +26,26 @@ Its own git repo (separate from Entoptica). The original FAD C/C++ source is
   tree, the math (closed-form pipeline + area-based diffusion), a numerical-
   methods primer (error diffusion / relaxation / Poisson), related work, and the
   porting plan. Start here.
-- **[`demos/fisheye-2d/`](demos/fisheye-2d/README.md)** — first demo: the
-  closed-form radial fisheye on a deformable, optionally textured grid. The
-  portable math core is `demos/fisheye-2d/src/warp.ts`.
+- **[`demos/fisheye-2d/`](demos/fisheye-2d/README.md)** — Engine A: the
+  closed-form radial fisheye on a deformable, optionally textured grid. Portable
+  math core: `demos/fisheye-2d/src/warp.ts`. Port 1995.
+- **[`demos/diffusion-mag/`](demos/diffusion-mag/README.md)** — Engine B: paint a
+  magnification field and watch a mesh relax to satisfy it (area-based diffusion
+  solver). Portable core: `demos/diffusion-mag/src/diffuse.ts`. Port 1996.
 
 ## Run a demo
 
 ```bash
-cd demos/fisheye-2d && npm install && npm run dev   # → http://localhost:1995
+cd demos/fisheye-2d   && npm install && npm run dev   # → http://localhost:1995
+cd demos/diffusion-mag && npm install && npm run dev   # → http://localhost:1996
 ```
+
+Each demo has its own pinned port (the year of the relevant paper), so they
+never collide and can run side by side.
 
 ## Status
 
-Engine A (closed-form pipeline) is the working demo. Engine B (the area-based
-diffusion solver) is next. See `NLM-ORIENTATION.md` §8–9 for the plan and open
-questions.
+Both engines are prototyped as standalone demos. Next candidates: multi-scale
+(stride) convergence for the solver, data-driven field sources (`MeshMag`), 3D,
+and defining the `warp.ts`/`diffuse.ts` → Entoptica `src/core` build-op
+interface. See `NLM-ORIENTATION.md` §8–9.

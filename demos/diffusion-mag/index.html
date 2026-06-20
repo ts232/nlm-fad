@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FAD · Diffusion magnification (paint a field)</title>
+    <style>
+      :root {
+        --bg: #0f0f12; --panel: #17171b; --line: #2a2a31;
+        --fg: #d7d7db; --muted: #8a8a93; --accent: #c81e3c;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; }
+      body {
+        background: var(--bg); color: var(--fg);
+        font: 13px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        display: grid; grid-template-columns: 1fr 268px; height: 100vh;
+      }
+      #stage { display: grid; place-items: center; padding: 16px; min-width: 0; min-height: 0; }
+      #gl {
+        width: min(100%, 100vh - 32px); aspect-ratio: 1 / 1;
+        background: #000; border: 1px solid var(--line); border-radius: 4px;
+        cursor: crosshair; touch-action: none;
+      }
+      #panel { background: var(--panel); border-left: 1px solid var(--line); padding: 18px 16px; overflow-y: auto; }
+      h1 { font-size: 13px; font-weight: 600; margin: 0 0 2px; letter-spacing: 0.02em; }
+      .sub { color: var(--muted); font-size: 11px; margin-bottom: 16px; }
+      .group { margin-bottom: 14px; }
+      .sec { color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+             margin: 4px 0 10px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+      label { display: block; color: var(--muted); font-size: 11px; text-transform: uppercase;
+              letter-spacing: 0.04em; margin-bottom: 6px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .val { color: var(--fg); font-variant-numeric: tabular-nums; font-size: 12px; }
+      input[type="range"] { width: 100%; accent-color: var(--accent); }
+      select, button { width: 100%; background: #202027; color: var(--fg);
+        border: 1px solid var(--line); border-radius: 4px; padding: 6px 8px; font: inherit; }
+      button { cursor: pointer; } button:hover { border-color: var(--muted); }
+      .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+      .check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--fg);
+               text-transform: none; letter-spacing: 0; font-size: 12px; }
+      .check input { accent-color: var(--accent); }
+      .readout { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 6px; }
+      .readout b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 500; }
+      .hint { color: var(--muted); font-size: 11px; margin-top: 12px; }
+    </style>
+  </head>
+  <body>
+    <div id="stage"><canvas id="gl"></canvas></div>
+
+    <aside id="panel">
+      <h1>Diffusion magnification</h1>
+      <div class="sub">FAD <code>MeshDiff</code> · paint a field, the mesh solves</div>
+
+      <div class="sec">Brush</div>
+      <div class="group">
+        <label for="brushMode">Mode</label>
+        <select id="brushMode">
+          <option value="magnify">Magnify (enlarge)</option>
+          <option value="minify">Minify (shrink)</option>
+          <option value="erase">Erase (back to 1×)</option>
+        </select>
+      </div>
+      <div class="group">
+        <div class="row"><label for="brushRadius">Size</label><span class="val" id="brushRadiusVal">0.18</span></div>
+        <input id="brushRadius" type="range" min="0.04" max="0.5" step="0.01" value="0.18" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="brushStrength">Strength</label><span class="val" id="brushStrengthVal">0.15</span></div>
+        <input id="brushStrength" type="range" min="0.02" max="0.5" step="0.01" value="0.15" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="maxZ">Max magnification</label><span class="val" id="maxZVal">4.0×</span></div>
+        <input id="maxZ" type="range" min="1.5" max="8" step="0.1" value="4" />
+      </div>
+
+      <div class="sec">Solver</div>
+      <div class="group">
+        <div class="row"><label for="refine">Refine coeff (damping)</label><span class="val" id="refineVal">0.30</span></div>
+        <input id="refine" type="range" min="0.05" max="0.8" step="0.01" value="0.3" />
+      </div>
+      <div class="group">
+        <div class="row"><label for="iters">Iterations / frame</label><span class="val" id="itersVal">25</span></div>
+        <input id="iters" type="range" min="1" max="60" step="1" value="25" />
+      </div>
+      <div class="group">
+        <label for="weight">Error weighting</label>
+        <select id="weight">
+          <option value="1">By magnification</option>
+          <option value="0">Uniform</option>
+          <option value="-1">Inverse magnification</option>
+        </select>
+      </div>
+      <label class="check"><input id="pin" type="checkbox" checked /> Pin boundary (hold frame)</label>
+      <div class="btns" style="margin-top:8px">
+        <button id="run">Pause solver</button>
+        <button id="step">Step ×iters</button>
+        <button id="resetMesh">Reset mesh</button>
+        <button id="clearField">Clear field</button>
+      </div>
+      <div class="readout"><span>RMS magnification error</span><b id="rms">0.000</b></div>
+
+      <div class="sec">Display</div>
+      <label class="check"><input id="showImage" type="checkbox" checked /> Image</label>
+      <label class="check"><input id="showField" type="checkbox" checked /> Field (heat overlay)</label>
+      <label class="check"><input id="showMesh" type="checkbox" checked /> Mesh</label>
+      <div class="group" style="margin-top:8px">
+        <label for="source">Texture</label>
+        <select id="source">
+          <option value="metro">DC Metro map (FAD demo)</option>
+          <option value="test">Test pattern</option>
+        </select>
+      </div>
+
+      <div class="hint">Drag on the canvas to paint magnification; the mesh relaxes toward it live. Warm = enlarge, cool = shrink. Drop an image onto the canvas to load it.</div>
+    </aside>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
