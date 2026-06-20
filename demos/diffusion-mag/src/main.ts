@@ -169,7 +169,7 @@ function makeTestPattern(size = 512): HTMLCanvasElement {
 const params: DiffParams = { ...DEFAULT_DIFF };
 const ui = {
   running: true,
-  itersPerFrame: 25,
+  itersPerFrame: 35,
   brushRadius: 0.18,
   brushStrength: 0.15,
   maxZ: 4,
@@ -330,6 +330,7 @@ bindSlider("brushRadius", (v) => {
 bindSlider("brushStrength", (v) => (ui.brushStrength = v), "brushStrengthVal");
 bindSlider("maxZ", (v) => (ui.maxZ = v), "maxZVal", (v) => `${v.toFixed(1)}×`);
 bindSlider("refine", (v) => (params.refineCoeff = v), "refineVal");
+bindSlider("clampEps", (v) => (params.clampEps = v), "clampEpsVal");
 bindSlider("iters", (v) => (ui.itersPerFrame = Math.round(v)), "itersVal", (v) => String(Math.round(v)));
 
 el<HTMLSelectElement>("brushMode").addEventListener("change", (e) => {

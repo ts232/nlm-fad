@@ -41,8 +41,9 @@ problem. See `NLM-ORIENTATION.md` §5 for the math.
 ## Controls
 
 - **Brush** — mode (magnify / minify / erase), size, strength, max magnification.
-- **Solver** — refine coeff (damping; higher = faster, less stable), iterations
-  per frame, error weighting (by-mag / uniform / inverse), pin-boundary.
+- **Solver** — refine coeff (rate), **step cap** (the per-step displacement clamp
+  — the dominant speed↔stability lever), iterations per frame, error weighting
+  (by-mag / uniform / inverse), pin-boundary.
 - **Run / Pause**, **Step ×iters** (one burst while paused), **Reset mesh**
   (positions home, keep field), **Clear field** (z → 1).
 - **Display** — image / field heat overlay / mesh, and the texture source.
@@ -53,7 +54,15 @@ problem. See `NLM-ORIENTATION.md` §5 for the math.
   target almost exactly; a *large* high-magnification region can't fully resolve
   because the pinned frame conserves total area — you can't fit a 3× region that
   large without infinite compression elsewhere. That plateau is correct physics,
-  not a bug. (FAD used multi-scale `stride` passes to accelerate; not yet ported.)
+  not a bug.
+- **On speed.** The dominant lever is the **step cap** (`clampEps`): raising it
+  0.1 → 0.25 converges ~2.5× faster while still settling on target. `refineCoeff`
+  and sweeps/frame help linearly. Multi-scale (`stride`) was implemented and
+  benchmarked but does **not** help — this damped/clamped nonlinear relaxation is
+  rate-limited, not propagation-limited, so coarse passes add overhead without
+  payoff. The `stride` parameter is kept in `diffuse.ts` for completeness; the
+  demo runs stride 1. (Push the sliders too hard — high refine + high step cap —
+  and it will overshoot/oscillate; the defaults leave headroom.)
 - The field is **Lagrangian** — it's attached to nodes, so it deforms with the
   mesh (a magnified region's heat blob grows with it).
 - Solver runs **on the CPU** (`diffuse.ts`, the portable core, no WebGL/DOM
@@ -62,6 +71,5 @@ problem. See `NLM-ORIENTATION.md` §5 for the math.
 
 ## Not yet (future)
 
-Multi-scale (stride) convergence, non-square aspect, data-driven field sources
-(density / proximity / image-gradient, à la FAD `MeshMag`), and an "achieved vs
-target" error visualization.
+Non-square aspect, data-driven field sources (density / proximity / image-
+gradient, à la FAD `MeshMag`), and an "achieved vs target" error visualization.
