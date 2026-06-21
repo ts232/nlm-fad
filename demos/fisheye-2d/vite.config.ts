@@ -12,4 +12,12 @@ export default defineConfig({
     port: 1995,
     strictPort: true,
   },
+  // Cheap source-hardening for published builds: never ship source maps (they
+  // reconstruct the original commented source), and drop every comment from the
+  // bundle — including the FAD file:line provenance cites in warp.ts, which stay
+  // useful in-source but shouldn't travel into a public build. Minification
+  // (esbuild, the prod default) does the rest. Not real protection — a speed
+  // bump against casual copying; see NLM-ORIENTATION §IP.
+  build: { sourcemap: false },
+  esbuild: { legalComments: "none" },
 });

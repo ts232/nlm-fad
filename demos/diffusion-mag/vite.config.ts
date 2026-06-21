@@ -6,4 +6,9 @@ import { defineConfig } from "vite";
 export default defineConfig({
   server: { port: 1996, strictPort: true },
   preview: { port: 1996, strictPort: true },
+  // Cheap source-hardening for published builds: no source maps, strip all
+  // comments (incl. FAD provenance cites) from the bundle. See fisheye-2d's
+  // config / NLM-ORIENTATION §IP for the rationale.
+  build: { sourcemap: false },
+  esbuild: { legalComments: "none" },
 });
