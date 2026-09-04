@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NLM-FAD · Nonlinear Magnification</title>
+  <style>
+    :root { --bg:#0f0f12; --panel:#17171b; --line:#2a2a31; --fg:#d7d7db; --muted:#8a8a93; --accent:#c81e3c; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: var(--bg); color: var(--fg);
+      font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, sans-serif; }
+    main { max-width: 880px; margin: 0 auto; padding: 48px 24px 64px; }
+    h1 { font-size: 26px; font-weight: 600; letter-spacing: 0.01em; margin: 0 0 4px; }
+    .sub { color: var(--muted); margin: 0 0 28px; }
+    p { max-width: 68ch; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; margin: 28px 0; }
+    a.card { display: block; background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+      padding: 16px 16px 14px; color: inherit; text-decoration: none; }
+    a.card:hover { border-color: var(--muted); }
+    a.card h2 { font-size: 15px; font-weight: 600; margin: 0 0 4px; }
+    a.card .eng { color: var(--accent); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 8px; }
+    a.card p { color: var(--muted); font-size: 13px; margin: 0; }
+    .foot { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 16px; margin-top: 32px; }
+    .foot a { color: var(--fg); }
+    code { background: #000; padding: 1px 5px; border-radius: 3px; font-size: 13px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>NLM-FAD — Nonlinear Magnification</h1>
+  <p class="sub">The author's TypeScript / WebGL2 port of his 1990s focus+context toolkit. Four demos, two engines, one seam.</p>
+
+  <p>Focus+context displays magnify what you're looking at while keeping the rest on screen, compressed.
+     <strong>Engine A</strong> is the classic approach: aim a closed-form lens. <strong>Engine B</strong> is FAD's
+     contribution: say <em>how much magnification you want, where</em> — a field — and solve for a mesh that delivers it.
+     The three Engine-B demos share one solver and differ only in where the field comes from.</p>
+
+  <div class="grid">
+    <a class="card" href="./fisheye-2d/">
+      <div class="eng">Engine A · closed-form</div>
+      <h2>Closed-form fisheye</h2>
+      <p>Drag a radial lens over a textured grid. Three kernels, a bounded domain, an optional legible linear centre.</p>
+    </a>
+    <a class="card" href="./diffusion-mag/">
+      <div class="eng">Engine B · brush</div>
+      <h2>Paint a field</h2>
+      <p>Paint where you want magnification and watch the mesh relax until each region's area matches what you asked for.</p>
+    </a>
+    <a class="card" href="./data-flow/">
+      <div class="eng">Engine B · moving data</div>
+      <h2>Traffic over a zone</h2>
+      <p>Planes cross a zone; their proximity becomes the field; the mesh follows the traffic and the planes ride the warp.</p>
+    </a>
+    <a class="card" href="./face-magnify/">
+      <div class="eng">Engine B · image features</div>
+      <h2>Magnify a face</h2>
+      <p>68 facial landmarks are the data points. Eyes, nose and mouth bulge outward; the periphery compresses. Drop in your own photo.</p>
+    </a>
+  </div>
+
+  <p>Papers: Keahey &amp; Robertson, IEEE InfoVis '96 and '97; Keahey, InfoVis '98. Source, math notes and citation file on
+     <a href="https://github.com/ts232/nlm-fad">GitHub</a>. Needs WebGL2; the face demo also loads a small detector model on first run.</p>
+
+  <div class="foot">© 2026 T. Alan Keahey · MIT License · original FAD toolkit 1995–2005</div>
+</main>
+</body>
+</html>

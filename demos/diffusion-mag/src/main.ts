@@ -353,7 +353,7 @@ el<HTMLInputElement>("showMesh").addEventListener("change", (e) => { ui.showMesh
 
 el<HTMLSelectElement>("source").addEventListener("change", (e) => {
   const t = e.target as HTMLSelectElement;
-  if (t.value === "metro") loadURL("/dcMetro.png");
+  if (t.value === "metro") loadURL(import.meta.env.BASE_URL + "dcMetro.png");
   else if (t.value === "test") uploadImage(makeTestPattern());
   t.blur();
 });
@@ -374,5 +374,5 @@ el<HTMLButtonElement>("clearField").addEventListener("click", () => { clearField
 syncRun();
 syncPos();
 syncZ();
-loadURL("/dcMetro.png");
+loadURL(import.meta.env.BASE_URL + "dcMetro.png");
 requestAnimationFrame(frame);

@@ -1,0 +1,69 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below. For the method itself,
+  cite the original papers listed under "references".
+type: software
+title: "NLM-FAD: Nonlinear Magnification (FAD), a TypeScript / WebGL2 port"
+authors:
+  - family-names: Keahey
+    given-names: T. Alan
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/ts232/nlm-fad"
+url: "https://ts232.github.io/nlm-fad/"
+abstract: >-
+  A TypeScript / WebGL2 re-implementation of FAD, the author's nonlinear
+  magnification (focus+context / fisheye) toolkit from his Indiana University
+  PhD work (1995-1998; later the Magnivista SDK). Two engines: closed-form
+  pipeline transformations, and magnification fields solved by an area-based
+  diffusion relaxation of a mesh. Four standalone browser demos.
+keywords:
+  - nonlinear magnification
+  - fisheye views
+  - focus+context
+  - detail-in-context
+  - information visualization
+  - mesh relaxation
+  - WebGL2
+references:
+  - type: conference-paper
+    title: "Techniques for Non-Linear Magnification Transformations"
+    authors:
+      - family-names: Keahey
+        given-names: T. Alan
+      - family-names: Robertson
+        given-names: Edward L.
+    collection-title: "Proceedings of the IEEE Symposium on Information Visualization (InfoVis '96)"
+    year: 1996
+    start: 38
+    end: 45
+    notes: "Also issued as Technical Report 455, Department of Computer Science, Indiana University."
+  - type: conference-paper
+    title: "Nonlinear Magnification Fields"
+    authors:
+      - family-names: Keahey
+        given-names: T. Alan
+      - family-names: Robertson
+        given-names: Edward L.
+    collection-title: "Proceedings of the IEEE Symposium on Information Visualization (InfoVis '97)"
+    year: 1997
+    start: 51
+    end: 58
+  - type: conference-paper
+    title: "The Generalized Detail-In-Context Problem"
+    authors:
+      - family-names: Keahey
+        given-names: T. Alan
+    collection-title: "Proceedings of the IEEE Symposium on Information Visualization (InfoVis '98)"
+    year: 1998
+    start: 44
+    end: 51
+  - type: thesis
+    title: "Nonlinear Magnification"
+    authors:
+      - family-names: Keahey
+        given-names: T. Alan
+    institution:
+      name: "Indiana University"
+    year: 1998
+    notes: "PhD dissertation, Department of Computer Science."

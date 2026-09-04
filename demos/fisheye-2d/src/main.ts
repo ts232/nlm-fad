@@ -435,7 +435,7 @@ el<HTMLInputElement>("followMouse").addEventListener("change", (e) => {
 
 el<HTMLSelectElement>("source").addEventListener("change", (e) => {
   const v = (e.target as HTMLSelectElement).value;
-  if (v === "metro") loadURL("/dcMetro.png");
+  if (v === "metro") loadURL(import.meta.env.BASE_URL + "dcMetro.png");
   else if (v === "test") { const c = makeTestPattern(512, 512); uploadImage(c, c.width, c.height); }
   else if (v === "wide") { const c = makeTestPattern(1024, 384); uploadImage(c, c.width, c.height); }
   else if (v === "tall") { const c = makeTestPattern(384, 1024); uploadImage(c, c.width, c.height); }
@@ -481,5 +481,5 @@ function syncUI(): void {
 // Go
 // ---------------------------------------------------------------------------
 syncUI();
-loadURL("/dcMetro.png"); // iconic FAD demo image
+loadURL(import.meta.env.BASE_URL + "dcMetro.png"); // iconic FAD demo image
 requestAnimationFrame(frame);
