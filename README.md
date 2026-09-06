@@ -14,7 +14,7 @@ modules, with four standalone browser demos.
 | [Closed-form fisheye](demos/fisheye-2d/) | Aim a radial lens at a textured grid — three kernels, an optional legible linear centre | A |
 | [Paint a field](demos/diffusion-mag/) | Paint where you want magnification and watch a mesh relax to deliver it | B · brush |
 | [Traffic over a zone](demos/data-flow/) | Moving data points *become* the field; the mesh follows the traffic | B · data |
-| [Magnify a face](demos/face-magnify/) | 68 facial landmarks are the data; eyes, nose and mouth magnify | B · image features |
+| [Magnify a face](demos/face-magnify/) | 68 facial landmarks outline the features; eyes, nose and mouth magnify | B · image features |
 
 ## The idea
 
@@ -79,6 +79,13 @@ script and deploys `_site/` to GitHub Pages.
 - **Proximity beats density as a data-driven field.** A bounded halo per point,
   scaled by a per-point weight, is stable. A kernel splat that *sums* makes
   clusters over-deform.
+- **A pinned boundary conserves area, so the field's mean must be 1.** Ask for
+  more magnification than the frame can pay for and the relaxation does not
+  converge — it bottoms out and then drifts back up. Projecting the field onto
+  mean `z` = 1 (subtract a constant: the least-squares projection, which keeps
+  every difference between features) is both the fix and the literal statement
+  of detail-in-context. It took the face demo's settled residual from 0.1495 to
+  0.0037; see [`demos/face-magnify/`](demos/face-magnify/README.md).
 - **Faithful first, then honest correction.** Each core cites the original FAD
   routine it ports; where the 1990s algorithm was too weak for modern use, the
   fix is made and the reason is in a comment.
@@ -109,7 +116,8 @@ above. `face-api.js` (MIT) and its model weights are vendored under
 ## Not yet — deliberately
 
 Packaging the cores as an installable library (they are currently copied per
-demo, by design, so each demo stays standalone); committed headless tests; the
-3D engines (`trans3D` / `mag3D`); a real convergence test and multigrid for the
+demo, by design, so each demo stays standalone); a headless test suite beyond
+the one in [`demos/face-magnify/test/`](demos/face-magnify/test/); the 3D
+engines (`trans3D` / `mag3D`); a real convergence test and multigrid for the
 solver. Those come later. The point of this release is the two engines and the
 seam between them, running where anyone can touch them.

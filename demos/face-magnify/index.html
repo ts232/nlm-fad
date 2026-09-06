@@ -26,6 +26,9 @@
       button { cursor: pointer; } button:hover { border-color: var(--muted); }
       .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
       .check { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; color: var(--fg); font-size: 12px; }
+      /* An author `display` beats the UA sheet's [hidden] rule, so .check rows
+         stayed visible when hidden by the method switch. Restore the intent. */
+      [hidden] { display: none !important; }
       .check input { accent-color: var(--accent); }
       .hint { color: var(--muted); font-size: 11px; margin-top: 12px; }
     </style>
@@ -42,35 +45,54 @@
       <div class="group">
         <label for="method">Field from landmarks</label>
         <select id="method">
+          <option value="shapes">Feature shapes (smooth)</option>
           <option value="proximity">Proximity (halo per point)</option>
-          <option value="density">Density (feature clusters)</option>
+          <option value="density">Density (kernel splat)</option>
         </select>
       </div>
       <div class="group">
+        <div class="row"><label for="master">Master strength</label><span class="val" id="masterVal">1.00</span></div>
+        <input id="master" type="range" min="0" max="2" step="0.01" value="1" />
+      </div>
+      <div class="group" id="g-falloff">
+        <div class="row"><label for="falloff">Falloff width</label><span class="val" id="falloffVal">0.090</span></div>
+        <input id="falloff" type="range" min="0.02" max="0.30" step="0.005" value="0.09" />
+      </div>
+      <div class="group" id="g-blend">
+        <div class="row"><label for="blend">Feature blend</label><span class="val" id="blendVal">3.0</span></div>
+        <input id="blend" type="range" min="1" max="8" step="0.1" value="3" />
+        <div class="hint" style="margin-top:4px">1 = features add where they overlap · 8 = each stays its own</div>
+      </div>
+      <div class="group" id="g-smooth">
+        <div class="row"><label for="smooth">Field smoothing</label><span class="val" id="smoothVal">4</span></div>
+        <input id="smooth" type="range" min="0" max="16" step="1" value="4" />
+      </div>
+      <label class="check" id="g-balance"><input id="balance" type="checkbox" checked /> Balance area (detail-in-context)</label>
+      <div class="group" id="g-radius">
         <div class="row"><label for="radius">Influence radius</label><span class="val" id="radiusVal">0.22</span></div>
         <input id="radius" type="range" min="0.05" max="0.5" step="0.01" value="0.22" />
       </div>
 
-      <div class="sec">Per-feature strength (0 = off)</div>
+      <div class="sec">Per-feature magnification (1.00× = off)</div>
       <div class="group">
-        <div class="row"><label for="str-eyes">Eyes</label><span class="val" id="str-eyesVal">6.0</span></div>
-        <input id="str-eyes" type="range" min="0" max="12" step="0.5" value="6" />
+        <div class="row"><label for="str-eyes">Eyes</label><span class="val" id="str-eyesVal">1.55×</span></div>
+        <input id="str-eyes" type="range" min="1" max="2.5" step="0.01" value="1.55" />
       </div>
       <div class="group">
-        <div class="row"><label for="str-brows">Brows</label><span class="val" id="str-browsVal">3.0</span></div>
-        <input id="str-brows" type="range" min="0" max="12" step="0.5" value="3" />
+        <div class="row"><label for="str-brows">Brows</label><span class="val" id="str-browsVal">1.10×</span></div>
+        <input id="str-brows" type="range" min="1" max="2.5" step="0.01" value="1.10" />
       </div>
       <div class="group">
-        <div class="row"><label for="str-nose">Nose</label><span class="val" id="str-noseVal">4.0</span></div>
-        <input id="str-nose" type="range" min="0" max="12" step="0.5" value="4" />
+        <div class="row"><label for="str-nose">Nose</label><span class="val" id="str-noseVal">1.20×</span></div>
+        <input id="str-nose" type="range" min="1" max="2.5" step="0.01" value="1.20" />
       </div>
       <div class="group">
-        <div class="row"><label for="str-mouth">Mouth</label><span class="val" id="str-mouthVal">6.0</span></div>
-        <input id="str-mouth" type="range" min="0" max="12" step="0.5" value="6" />
+        <div class="row"><label for="str-mouth">Mouth</label><span class="val" id="str-mouthVal">1.40×</span></div>
+        <input id="str-mouth" type="range" min="1" max="2.5" step="0.01" value="1.40" />
       </div>
       <div class="group">
-        <div class="row"><label for="str-jaw">Jaw</label><span class="val" id="str-jawVal">3.0</span></div>
-        <input id="str-jaw" type="range" min="0" max="12" step="0.5" value="3" />
+        <div class="row"><label for="str-jaw">Jaw</label><span class="val" id="str-jawVal">1.00×</span></div>
+        <input id="str-jaw" type="range" min="1" max="2.5" step="0.01" value="1.00" />
       </div>
 
       <div class="sec">Solver</div>
@@ -90,6 +112,9 @@
         <button id="run">Pause</button>
         <button id="resetMesh">Reset mesh</button>
       </div>
+      <div class="row" style="margin-top:10px">
+        <label style="margin:0">RMS magnification error</label><span class="val" id="rms">—</span>
+      </div>
 
       <div class="sec">Display</div>
       <label class="check"><input id="showImage" type="checkbox" checked /> Face image</label>
@@ -102,7 +127,7 @@
         <input id="file" type="file" accept="image/*" />
       </div>
 
-      <div class="hint">The 68 facial landmarks are the data points; their density drives the magnification, so the eyes, nose and mouth (where points cluster) bulge outward. Drop any front-facing face onto the canvas to try it.</div>
+      <div class="hint">The 68 facial landmarks outline each feature; <em>Feature shapes</em> builds a smooth kernel around the outline itself, so an eye magnifies as an eye rather than as six overlapping blobs. <em>Balance area</em> pays for the magnified features by compressing the periphery — without it the target asks for more area than the pinned frame has, and the solve never settles. Watch the RMS error: it should fall and stay down. Drop any front-facing face onto the canvas to try it.</div>
     </aside>
 
     <script type="module" src="/src/main.ts"></script>
