@@ -36,7 +36,8 @@
 //     compressing the periphery. This is what makes the solver converge.
 //
 // Units are magnification factors throughout: `mag: 1.5` means "this feature
-// should end up 1.5× its area", which is what the UI now shows.
+// should end up 1.5× its area", which is what the UI now shows — and, with
+// `calibrate`, what the finished field actually asks for after blur + balance.
 
 export type FeatureKey = "eyes" | "brows" | "nose" | "mouth" | "jaw";
 
@@ -68,6 +69,12 @@ export interface FeatureFieldParams {
   balanceArea: boolean;
   /** Lower bound for z when balancing, so no cell is asked to vanish. */
   floor: number;
+  /**
+   * Re-aim each feature so the FINISHED field (after blur and balance) sits at
+   * its target on the feature. Without it the blur and the area budget shave
+   * 10–15% off every feature's excess — a 1.55× slider delivered 1.47×.
+   */
+  calibrate: boolean;
 }
 
 export const DEFAULT_FEATURE_FIELD: FeatureFieldParams = {
@@ -77,7 +84,18 @@ export const DEFAULT_FEATURE_FIELD: FeatureFieldParams = {
   smoothPasses: 4,
   balanceArea: true,
   floor: 0.35,
+  calibrate: true,
 };
+
+/**
+ * The legacy point-cloud fields' per-point weight for a target magnification.
+ * Proximity delivers z = 1 + tanh(radius)·weight at a landmark, so this makes a
+ * `mag` slider mean the same thing under all three methods. Density *sums*
+ * overlapping splats, so it only approximates the target.
+ */
+export function legacyWeight(mag: number, radius: number): number {
+  return mag <= 1 ? 0 : (mag - 1) / Math.tanh(radius);
+}
 
 // ---------------------------------------------------------------------------
 // Geometry
@@ -235,28 +253,78 @@ export function computeFeatureField(
     return;
   }
 
-  const excess: number[] = [];
+  // Kernel weight of each feature at each node — the geometry, computed once, so
+  // re-assembling the field under new gains (calibration) costs no distances.
+  const F = active.length, NN = N * N;
+  const W = new Float32Array(F * NN);
   for (let r = 0; r < N; r++) {
     const ny = r * h - 1;
     for (let c = 0; c < N; c++) {
       const nx = c * h - 1;
-      excess.length = 0;
-      for (const s of active) {
-        const b = s.box;
+      for (let f = 0; f < F; f++) {
+        const s = active[f], b = s.box;
         if (nx < b.x0 || nx > b.x1 || ny < b.y0 || ny > b.y1) continue; // cheap reject
         let w = 0;
         for (const poly of s.polys) {
           const t = skirt(distToPoly(nx, ny, poly, s.closed), falloff);
           if (t > w) w = t; // the two eyes are one feature, not two stacked ones
         }
-        if (w > 0) excess.push((s.mag - 1) * w);
+        W[f * NN + r * N + c] = w;
       }
-      z[r * N + c] = 1 + softUnion(excess, p.blend) * p.master;
     }
   }
 
-  smoothField(z, N, p.smoothPasses);
-  if (p.balanceArea) balanceField(z, p.floor);
+  const gain = new Float64Array(F).fill(1);
+  const excess: number[] = [];
+  const assemble = () => {
+    for (let i = 0; i < NN; i++) {
+      excess.length = 0;
+      for (let f = 0; f < F; f++) {
+        const w = W[f * NN + i];
+        if (w > 0) excess.push((active[f].mag - 1) * gain[f] * w);
+      }
+      z[i] = 1 + softUnion(excess, p.blend) * p.master;
+    }
+    smoothField(z, N, p.smoothPasses);
+    if (p.balanceArea) balanceField(z, p.floor);
+  };
+  assemble();
+  if (!p.calibrate || p.master <= 0) return;
+
+  // CALIBRATION. Measure each feature's excess on its CORE — the nodes inside a
+  // ring, or within the kernel's top band along a curve (which has no inside) —
+  // and scale its gain toward the target. The blur and the balance are
+  // near-linear in the excess, so a few fixed-point passes land it; overlapping
+  // features converge jointly. Each pass is one assemble (no distances).
+  // A ring's core must be its interior only: counting the rim band (where the
+  // blur has already pulled z down) under-reads it and the interior overshoots.
+  const PASSES = 4;
+  const core: Int32Array[] = [];
+  for (let f = 0; f < F; f++) {
+    const idx: number[] = [];
+    let wMax = 0;
+    for (let i = 0; i < NN; i++) wMax = Math.max(wMax, W[f * NN + i]);
+    const band = active[f].closed ? 0.9999 : 0.9;
+    const cut = Math.min(band, wMax * 0.999); // a feature smaller than a cell: its best-covered nodes
+    for (let i = 0; i < NN; i++) if (wMax > 0 && W[f * NN + i] >= cut) idx.push(i);
+    core.push(Int32Array.from(idx));
+  }
+  for (let k = 0; k < PASSES; k++) {
+    let worst = 0;
+    for (let f = 0; f < F; f++) {
+      const idx = core[f];
+      if (idx.length === 0) continue;
+      let sum = 0;
+      for (const i of idx) sum += z[i] - 1;
+      const got = sum / idx.length, want = (active[f].mag - 1) * p.master;
+      if (got <= 1e-6) continue;
+      const ratio = want / got;
+      worst = Math.max(worst, Math.abs(ratio - 1));
+      gain[f] = Math.min(4, Math.max(0.25, gain[f] * ratio));
+    }
+    if (worst < 2e-3) break;
+    assemble();
+  }
 }
 
 /** The landmark groups face-api returns, as the five controllable features. */

@@ -84,8 +84,9 @@ script and deploys `_site/` to GitHub Pages.
   converge — it bottoms out and then drifts back up. Projecting the field onto
   mean `z` = 1 (subtract a constant: the least-squares projection, which keeps
   every difference between features) is both the fix and the literal statement
-  of detail-in-context. It took the face demo's settled residual from 0.1495 to
-  0.0037; see [`demos/face-magnify/`](demos/face-magnify/README.md).
+  of detail-in-context. At strong settings it is the biggest single lever on the
+  face demo (settled residual 0.036 → 0.023, and no drift); see
+  [`demos/face-magnify/`](demos/face-magnify/README.md).
 - **Faithful first, then honest correction.** Each core cites the original FAD
   routine it ports; where the 1990s algorithm was too weak for modern use, the
   fix is made and the reason is in a comment.

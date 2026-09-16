@@ -31,6 +31,10 @@ npm run dev      # → http://localhost:1998  (pinned port)
   separate — and the finished field gets an optional binomial blur.
 - **Per-feature magnification** — one slider per group in honest units: `1.55×`
   means "this feature should end up 1.55× its area". `1.00×` = leave it alone.
+  **Calibrated**: the blur and the area balance below would otherwise shave
+  10–15% off every feature's excess (1.55× delivered 1.47×), so each feature's
+  gain is re-aimed until the finished field sits at its target on the feature —
+  inside a ring, along a curve. Measured after the solve: 1.551× for 1.55×.
 - **Balance area (detail-in-context)** — a pinned boundary conserves total area,
   so the mean of `z` **must** be 1; the field is projected onto that constraint
   by subtracting a constant (the least-squares projection, which preserves every
@@ -55,12 +59,24 @@ The first build magnified from the landmark *points*, and it made blobby,
 uncontrollable faces. `test/diagnose.ts` measures why, headless, against a
 committed fixture of real landmarks (`test/landmarks.sample.json`):
 
-| field | mean z | max Δz between neighbours | RMS error after 1200 sweeps |
-|---|---|---|---|
-| proximity, as shipped | 1.132 | 0.625 | **0.1495** — best was 0.1178 at ~600, then *drifts back up* |
-| density, as shipped | 1.958 | 2.482 | 1.2984 |
-| feature shapes | 1.015 | 0.122 | 0.0089 (monotone) |
-| feature shapes + balance | **1.000** | 0.122 | **0.0037** (monotone) |
+As first shipped, "strength 6" asked for 2.28× and the proximity field settled
+at RMS 0.1495 after drifting 27% back up from its best. That run exaggerates the
+gap, though: most of it was the size of the ask. The fair comparison drives
+**every method with the same targets** (the legacy fields via
+`legacyWeight`), at the demo defaults and at a strong setting:
+
+| field (same targets) | defaults: RMS | max Δz | eyes, asked 1.55× | strong: RMS | eyes, asked 2.50× |
+|---|---|---|---|---|---|
+| proximity (point cloud) | 0.0160 | 0.407 | 1.496× | 0.1052 *drifts* | 2.320× |
+| density (point cloud) | 0.5009 | 1.930 | 2.312× | 1.2136 | 1.672× |
+| shapes | 0.0089 | 0.122 | 1.484× | 0.0361 | 2.294× |
+| shapes + balance | **0.0037** | 0.122 | 1.473× | **0.0228** | 2.258× |
+| shapes + balance + calibration (default) | 0.0046 | 0.142 | **1.551×** | 0.0301 | **2.488×** |
+
+So, at equal targets: the shape kernels cut the seams about 3× and the residual
+about 2×; balancing is the biggest single lever at strong settings (it is what
+stops the drift); and calibration makes the slider true at a small residual cost,
+since it asks for the magnification the blur and balance used to shave off.
 
 Four separate faults, all fixed above:
 

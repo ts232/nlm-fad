@@ -7,10 +7,16 @@
 //   2. is it SMOOTH?  max |Δz| between 4-neighbours; a nearest-point field jumps
 //      at Voronoi seams between differently-weighted points.
 //   3. does the mesh FOLD?  count quads whose signed area is <= 0 after relaxing.
+//   4. does it DELIVER?  the achieved area ratio inside the eye and mouth rings,
+//      against the magnification the slider claims.
+//
+// Every method in the comparison is driven by the SAME per-feature targets
+// (the legacy fields via legacyWeight), at the demo's defaults and at a strong
+// setting — the old "as shipped" run asked for 2.28× and is kept only as history.
 
 import { makeDiffMesh, diffuseStep, rmsError, DEFAULT_DIFF, type DiffMesh } from "../src/diffuse.ts";
 import { computeProximityField, computeDensityField, type Planes } from "../src/field.ts";
-import { computeFeatureField, shapesFromFeatures, DEFAULT_FEATURE_FIELD } from "../src/featureField.ts";
+import { computeFeatureField, shapesFromFeatures, legacyWeight, DEFAULT_FEATURE_FIELD, type FeatureFieldParams } from "../src/featureField.ts";
 import { readFileSync } from "node:fs";
 
 const LM = JSON.parse(readFileSync(new URL("./landmarks.sample.json", import.meta.url), "utf8"));
@@ -78,7 +84,33 @@ export function relax(m: DiffMesh, sweeps: number): number[] {
   return trace;
 }
 
-function report(label: string, m: DiffMesh, sweeps: number): void {
+// Achieved area ratio (current / rest) over the quads whose rest centre lies inside the rings.
+function inPoly(px: number, py: number, poly: { x: number; y: number }[]): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const yi = poly[i].y, yj = poly[j].y;
+    if (yi > py !== yj > py && px < poly[i].x + ((py - yi) / (yj - yi)) * (poly[j].x - poly[i].x)) inside = !inside;
+  }
+  return inside;
+}
+export function delivered(m: DiffMesh, rings: { x: number; y: number }[][]): number {
+  const N = m.N, h = 2 / (N - 1);
+  let area = 0, rest = 0;
+  for (let r = 0; r < N - 1; r++) {
+    for (let c = 0; c < N - 1; c++) {
+      if (!rings.some((g) => inPoly((c + 0.5) * h - 1, (r + 0.5) * h - 1, g))) continue;
+      const q = [r * N + c, r * N + c + 1, (r + 1) * N + c + 1, (r + 1) * N + c];
+      let s = 0;
+      for (let k = 0; k < 4; k++) { const i = q[k], j = q[(k + 1) & 3]; s += m.x[i] * m.y[j] - m.x[j] * m.y[i]; }
+      area += Math.abs(s) / 2; rest += h * h;
+    }
+  }
+  return area / rest;
+}
+
+type Mag = { eyes: number; brows: number; nose: number; mouth: number; jaw: number };
+
+function report(label: string, m: DiffMesh, sweeps: number, mag?: Mag): void {
   const st = fieldStats(m);
   const trace = relax(m, sweeps);
   const settled = trace[trace.length - 1];
@@ -91,28 +123,53 @@ function report(label: string, m: DiffMesh, sweeps: number): void {
   console.log(`   settled at ${settled.toFixed(4)}; best was ${best.toFixed(4)}` +
     (settled > best * 1.05 ? `  ** DRIFTS AWAY from its best by ${((settled / best - 1) * 100).toFixed(0)}% **` : "  (monotone)"));
   console.log(`   folded cells . ${foldCount(m)} / ${(m.N - 1) * (m.N - 1)}`);
+  if (mag) {
+    const eyes = delivered(m, [LM.leftEye, LM.rightEye]), mouth = delivered(m, [LM.mouth.slice(0, 12)]);
+    console.log(`   delivered .... eyes ${eyes.toFixed(3)}× (asked ${mag.eyes.toFixed(2)}×) · mouth ${mouth.toFixed(3)}× (asked ${mag.mouth.toFixed(2)}×)`);
+  }
 }
 
 if (import.meta.filename === process.argv[1]) {
   const N = 96;
   const SWEEPS = 1200;
-  const shipped = { eyes: 6, brows: 3, nose: 4, mouth: 6, jaw: 3 };
+  const R = 0.22;
 
+  // History: the first build's defaults. "Strength 6" through tanh(0.22) asked for 2.28×.
+  const shipped = { eyes: 6, brows: 3, nose: 4, mouth: 6, jaw: 3 };
   for (const method of ["proximity", "density"] as const) {
     const m = makeDiffMesh(N);
     const p = pointsFromStrengths(shipped);
-    if (method === "proximity") computeProximityField(m, p, 1, 0.22);
-    else computeDensityField(m, p, 1, 0.22);
-    report(`${method} — point cloud, shipped defaults (radius 0.22, ${p.n} points)`, m, SWEEPS);
+    if (method === "proximity") computeProximityField(m, p, 1, R);
+    else computeDensityField(m, p, 1, R);
+    report(`[history] ${method} — first build's defaults (strength 6 ≈ 2.28×, ${p.n} points)`, m, SWEEPS);
   }
 
-  // The replacement, at defaults that produce a comparable peak magnification.
-  const mag = { eyes: 1.55, brows: 1.1, nose: 1.2, mouth: 1.4, jaw: 1 };
-  for (const balanceArea of [false, true]) {
-    const m = makeDiffMesh(N);
-    const t0 = performance.now();
-    computeFeatureField(m.z, N, shapesFromFeatures(LM, mag), { ...DEFAULT_FEATURE_FIELD, balanceArea });
-    const ms = performance.now() - t0;
-    report(`feature shapes — balanceArea ${balanceArea ? "ON" : "off"} (field built in ${ms.toFixed(1)} ms)`, m, SWEEPS);
+  // The comparison that isolates each change: identical targets for every method.
+  const settings: [string, Mag][] = [
+    ["demo defaults", { eyes: 1.55, brows: 1.1, nose: 1.2, mouth: 1.4, jaw: 1 }],
+    ["strong", { eyes: 2.5, brows: 1.6, nose: 1.8, mouth: 2.3, jaw: 1.4 }],
+  ];
+  const F = DEFAULT_FEATURE_FIELD;
+  const shapeRuns: [string, FeatureFieldParams][] = [
+    ["shapes, no balance, no calibration", { ...F, balanceArea: false, calibrate: false }],
+    ["shapes + balance, no calibration", { ...F, calibrate: false }],
+    ["shapes + balance + calibration (default)", F],
+  ];
+  for (const [name, mag] of settings) {
+    const weights = Object.fromEntries(Object.entries(mag).map(([k, v]) => [k, legacyWeight(v, R)]));
+    for (const method of ["proximity", "density"] as const) {
+      const m = makeDiffMesh(N);
+      const p = pointsFromStrengths(weights);
+      if (method === "proximity") computeProximityField(m, p, 1, R);
+      else computeDensityField(m, p, 1, R);
+      report(`[${name}] ${method} — point cloud, same targets`, m, SWEEPS, mag);
+    }
+    for (const [label, params] of shapeRuns) {
+      const m = makeDiffMesh(N);
+      const t0 = performance.now();
+      computeFeatureField(m.z, N, shapesFromFeatures(LM, mag), params);
+      const ms = performance.now() - t0;
+      report(`[${name}] ${label} (field built in ${ms.toFixed(1)} ms)`, m, SWEEPS, mag);
+    }
   }
 }

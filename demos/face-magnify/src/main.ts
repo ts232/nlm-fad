@@ -7,7 +7,7 @@
 import { makeDiffMesh, diffuseStep, resetPositions, rmsError, DEFAULT_DIFF, type DiffMesh, type DiffParams } from "./diffuse";
 import { computeDensityField, computeProximityField, warpLookup, type Planes } from "./field";
 import {
-  computeFeatureField, shapesFromFeatures, DEFAULT_FEATURE_FIELD,
+  computeFeatureField, shapesFromFeatures, legacyWeight, DEFAULT_FEATURE_FIELD,
   type FeatureKey, type FeatureFieldParams,
 } from "./featureField";
 import { detectFaces, type FaceFeatures } from "./faceApi";
@@ -155,7 +155,7 @@ function rebuildPoints(): void {
   const ws: number[] = [];
   for (const [key, arr] of groups) {
     all.push(...arr);
-    const w = legacyWeight(ui.mag[key]);
+    const w = legacyWeight(ui.mag[key], ui.radius);
     if (w <= 0) continue;
     for (const p of arr) { pts.push(p); ws.push(w); }
   }
@@ -168,15 +168,6 @@ function makePointSet(pts: { x: number; y: number }[], weights?: number[]): Plan
   const x = new Float32Array(n), y = new Float32Array(n), w = new Float32Array(n);
   for (let i = 0; i < n; i++) { x[i] = pts[i].x; y[i] = pts[i].y; w[i] = weights ? weights[i] : 1; }
   return { n, x, y, w, vx: new Float32Array(n), vy: new Float32Array(n) };
-}
-
-// Map a target magnification onto the legacy "strength" the point-cloud fields
-// expect. Proximity delivers z = 1 + tanh(radius)·strength at a landmark, so
-// strength = (mag − 1)/tanh(radius) makes the slider mean the same thing under
-// all three methods. Density *sums* overlapping splats, so it only approximates
-// the target — it stays available, and stays spikier, by design.
-function legacyWeight(mag: number): number {
-  return mag <= 1 ? 0 : (mag - 1) / Math.tanh(ui.radius);
 }
 
 function setPoints(pts: { x: number; y: number }[], weights?: number[]): void {
