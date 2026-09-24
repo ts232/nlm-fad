@@ -4,7 +4,7 @@ A standalone, dependency-light demo of the **closed-form nonlinear-magnification
 half of the FAD toolkit: a single radial fisheye focus over a round domain,
 applied to a deformable grid that can optionally be textured with an image.
 
-It is the first porting beachhead for moving FAD from C/C++ to the Entoptica
+It is the first porting beachhead for moving FAD from C/C++ to a modern browser
 stack (TypeScript + WebGL2 + Vite). See [`../../NLM-ORIENTATION.md`](../../NLM-ORIENTATION.md)
 for the full toolkit map, the math, and provenance.
 
@@ -12,7 +12,7 @@ for the full toolkit map, the math, and provenance.
 
 ```bash
 npm install
-npm run dev      # → http://localhost:1995  (pinned port; never conflicts with Entoptica's 5173)
+npm run dev      # → http://localhost:1995  (pinned port)
 ```
 
 Port **1995** (the year of IUCS-TR455, the original Nonlinear Magnification tech
@@ -51,7 +51,7 @@ every run.
 
 - `src/warp.ts` — the portable math core (kernels, `warpPoint`, lattice). **This
   is the reusable library seed**; it has no WebGL/DOM dependency and is the file
-  that will graduate into Entoptica.
+  that will graduate into a shared core.
 - `src/main.ts` — WebGL2 renderer + interaction (recomputes the warped lattice on
   the CPU each change, uploads positions, draws textured tris + grid lines).
 - `index.html` — monochrome control panel.

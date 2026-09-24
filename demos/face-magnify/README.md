@@ -17,8 +17,7 @@ npm run dev      # → http://localhost:1998  (pinned port)
 ## How it works
 
 - **Landmarks** (`src/faceApi.ts`) — loads **face-api.js@0.22.2** + TinyFaceDetector
-  / 68-landmark weights from local `/public` assets (vendored, no CDN), mirroring
-  Entoptica's `src/core/field/faceApi.ts`. Runs on **TensorFlow.js's WebGL (GPU)
+  / 68-landmark weights from local `/public` assets (vendored, no CDN). Runs on **TensorFlow.js's WebGL (GPU)
   backend** — not WebAssembly. `detectAllFaces(img).withFaceLandmarks()` → 68
   points per face, **grouped by feature** and normalized to mesh space `[-1,1]`.
 - **Feature shapes → field** (`src/featureField.ts`, the default) — the 68
@@ -128,7 +127,7 @@ node --experimental-strip-types test/diagnose.ts
   tiny / occluded faces may not detect.
 - The vendored face-api assets (`public/vendor`, `public/models`) are MIT
   (face-api.js) and committed so the demo is self-contained. `sample-face.png`
-  is the same test face Entoptica uses.
+  is an AI-generated portrait — not a real person.
 - This is the template for any feature→field source: swap the landmark detector
   for edges / saliency / corners and nothing downstream changes.
 - `test/landmarks.sample.json` is the real 68-point detection for

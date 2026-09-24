@@ -1,15 +1,15 @@
 # CLAUDE.md — Nonlinear Magnification (FAD) port
 
-Guidance for Claude Code working in `Experiments/nlm/`. This sits under the Entoptica umbrella `CLAUDE.md` but the rules here take precedence for this directory.
+Guidance for Claude Code working in this repo (`github.com/ts232/nlm-fad`).
 
 ## What this is
 
-A modern **TypeScript / WebGL2** re-implementation of **FAD**, T. Alan Keahey's nonlinear-magnification toolkit (Indiana University PhD; Magnivista, 1995–2005; original is C/C++ for SGI/GLUT). **The user is the original author** *and* a data-visualization PhD — engage at research level; explain unfamiliar numerical-analysis names (Floyd–Steinberg, Gauss–Seidel) but never condescend about his own work. Goal: standalone web demos now, eventual fold-in to Entoptica `src/core` as composable build-ops. Full reference: **`NLM-ORIENTATION.md`** (repo map, math, numerical-methods primer, related work, per-demo notes §8).
+A modern **TypeScript / WebGL2** re-implementation of **FAD**, T. Alan Keahey's nonlinear-magnification toolkit (Indiana University PhD; Magnivista, 1995–2005; original is C/C++ for SGI/GLUT). **The user is the original author** *and* a data-visualization PhD — engage at research level; explain unfamiliar numerical-analysis names (Floyd–Steinberg, Gauss–Seidel) but never condescend about his own work. Goal: standalone web demos now; the math cores (`warp.ts` / `diffuse.ts` / `field.ts`) are written to be lifted into other browser projects as composable ops. Full reference: **`NLM-ORIENTATION.md`** (repo map, math, numerical-methods primer, related work, per-demo notes §8).
 
 ## Repo rules
 
-- **This is its own git repo** (`Experiments/nlm/.git`, branch `main`), separate from Entoptica. **Do NOT commit nlm into the Entoptica repo** — Entoptica `.gitignore`s `Experiments/nlm/`.
-- **`FAD/` is a symlink** to the original **licensed Magnivista C/C++** source in iCloud. It is gitignored — never commit it, never redistribute it. Quoting small snippets in docs is fine (he owns it).
+- **This is its own git repo** (branch `main`), independent of the author's other projects.
+- **`FAD/` is a symlink** to the author's private copy of the original **Magnivista C/C++** source. It is gitignored — never commit it, never redistribute it. Quoting small snippets in docs is fine (he owns it).
 - Commit directly when work is done (no need to confirm the message). End commit messages with the `Co-Authored-By` trailer.
 
 ## Architecture — the one idea
@@ -35,7 +35,7 @@ Ports are pinned (`strictPort`) by relevant paper year (1995 TR455 · 1996 InfoV
 ## Conventions (what works for this user)
 
 - **One standalone prototype per control space.** When the *interaction model* differs (aim-a-lens vs paint vs animated-data vs image-features), make a new `demos/<name>/` even though they share core code — don't pile modes into one app.
-- **Copy the portable cores per demo** (`diffuse.ts`, `field.ts`); keep the copies in sync. Real dedup happens at Entoptica fold-in. `warp.ts`/`diffuse.ts`/`field.ts` are the files that graduate into `src/core`.
+- **Copy the portable cores per demo** (`diffuse.ts`, `field.ts`); keep the copies in sync. Real dedup happens when the cores become a package (`packages/nlm-core`, not yet). `warp.ts`/`diffuse.ts`/`field.ts` are the files that graduate into it.
 - **Verify findings empirically before applying them.** The TS cores run headless via `node --experimental-strip-types some_test.ts` (Node 23). Used it to benchmark convergence and to *disprove* the obvious-looking optimization.
 - **Faithful first, then honest correction.** Port FAD's actual algorithm (cite file:line); when it's too weak/wrong for modern use, fix it and say why in a comment. If you mis-state a fact, own it and fix the docs.
 - Monochrome/muted UI, one purposeful accent (matches the user's global prefs).
@@ -60,8 +60,8 @@ The browser is needed to *see* WebGL output (and to run face-api, which is **Ten
 - **Compare methods at equal targets.** The first face write-up claimed a "40×" residual win by comparing the old 2.28× defaults against new 1.55× targets; at identical targets it is ~4× (and balance matters most at *strong* settings). `test/diagnose.ts` runs the fair comparison, including delivered magnification inside the eye/mouth rings.
 - **Don't reset the mesh when a target changes.** Retarget the field and let the running relaxation walk there; resetting on every slider nudge is what made the face demo feel uncontrollable.
 - **Per-point weight** (`field.ts` `Planes.w`) carries per-feature strength in `face-magnify` (proximity scales by the nearest point's weight). Backward-compatible — unset → 1.
-- **face-api** assets are vendored under `face-magnify/public/{vendor,models}` (MIT), mirroring Entoptica's `src/core/field/faceApi.ts`. Landmarks are typed (`getMouth/getLeftEye/getNose/getJawOutline/…`) → per-feature controls.
+- **face-api** assets are vendored under `face-magnify/public/{vendor,models}` (MIT). Landmarks are typed (`getMouth/getLeftEye/getNose/getJawOutline/…`) → per-feature controls.
 
 ## Next candidates
 
-Per-feature radius; other feature sources (edges/saliency/corners — same template); 3D (`trans3D`/`mag3D`); defining the `warp.ts`/`diffuse.ts`/`field.ts` → Entoptica `src/core` build-op interface. See `NLM-ORIENTATION.md` §9.
+Per-feature radius; other feature sources (edges/saliency/corners — same template); 3D (`trans3D`/`mag3D`); defining the shared-core package interface for `warp.ts`/`diffuse.ts`/`field.ts`. See `NLM-ORIENTATION.md` §9.

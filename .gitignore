@@ -5,7 +5,7 @@ dist/
 _site/
 .preview/
 
-# The FAD symlink points to the licensed Magnivista C++ source in iCloud.
+# The FAD symlink points to the author's private copy of the Magnivista C++ source.
 # It is a local, machine-specific pointer and is NOT redistributed in this repo.
 /FAD
 

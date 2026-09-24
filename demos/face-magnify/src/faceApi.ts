@@ -1,6 +1,5 @@
 // faceApi.ts — load face-api.js + TinyFaceDetector / 68-landmark weights from our
-// own /public assets (vendored from face-api.js@0.22.2). Mirrors Entoptica's
-// src/core/field/faceApi.ts so this demo's face stage matches the engine's.
+// own /public assets (vendored from face-api.js@0.22.2).
 
 const FACEAPI_URL = import.meta.env.BASE_URL + "vendor/face-api.min.js";
 const MODEL_URL = import.meta.env.BASE_URL + "models";
