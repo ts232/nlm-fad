@@ -7,7 +7,7 @@ C++ for SGI / GLUT and later a commercial SDK (Magnivista, 1995–2005). This re
 rebuilds the two engines at its core as small, dependency-free TypeScript
 modules, with four standalone browser demos.
 
-**Live demos:** <https://ts232.github.io/nlm-fad/>
+**Live demos:** <https://holisticsofa.ai/nlm-fad/>
 
 | Demo | What it shows | Engine · field source |
 |---|---|---|
