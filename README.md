@@ -83,8 +83,8 @@ script and deploys `_site/` to GitHub Pages.
   more magnification than the frame can pay for and the relaxation does not
   converge — it bottoms out and then drifts back up. Projecting the field onto
   mean `z` = 1 (subtract a constant: the least-squares projection, which keeps
-  every difference between features) is both the fix and the literal statement
-  of detail-in-context. At strong settings it is the biggest single lever on the
+  every difference between features) is both the fix and the area-conservation half
+  of detail-in-context (magnified regions paid for by compressing the periphery). At strong settings it is the biggest single lever on the
   face demo (settled residual 0.036 → 0.023, and no drift); see
   [`demos/face-magnify/`](demos/face-magnify/README.md).
 - **Faithful first, then honest correction.** Each core cites the original FAD

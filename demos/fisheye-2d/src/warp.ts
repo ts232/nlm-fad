@@ -23,7 +23,7 @@ export interface Vec2 {
 export const kernels = {
   // hyperWarp(x, b) = tanh(x*b)            — the FAD default ("continuous radial")
   hyper: (x: number, beta: number) => Math.tanh(x * beta),
-  // fisheye(x, b)  = (1+b)x / (b*x + 1)    — Keahey's rational fisheye; equals 1 at x=1
+  // fisheye(x, b)  = (1+b)x / (b*x + 1)    — Sarkar & Brown's rational fisheye (CACM 1994), as used in FAD; equals 1 at x=1
   fisheye: (x: number, beta: number) => ((1 + beta) * x) / (beta * x + 1),
   // logisticHyper(x, b) = 2/(1+e^-2bx) - 1 — sigmoid variant, steeper centre
   logistic: (x: number, beta: number) => 2 / (1 + Math.exp(-2 * beta * x)) - 1,
