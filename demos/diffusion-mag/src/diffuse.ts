@@ -204,6 +204,49 @@ export function rmsError(m: DiffMesh): number {
   return n ? Math.sqrt(acc / n) : 0;
 }
 
+// Settle monitor — when is the relaxation done? Snapshot before a frame's sweeps
+// (settleBegin), judge after (settleCheck), reset on any input change
+// (settleWake). Two exits, because feasible and infeasible fields end
+// differently:
+//  - "settled": every node moves < still per frame for stillFrames frames
+//    (5e-4 mesh units ≈ 0.1–0.2 screen px);
+//  - "stalled": RMS hasn't improved by stallGain in stallFrames frames. A field
+//    whose mean z is well above 1 never goes still — the saturated region keeps
+//    shuffling ~1.5px a frame with the RMS flat — so stillness alone never fires.
+// Sample at a fixed sweep parity (see diffuseStep) or the period-2 cycle reads
+// as motion and "settled" never fires either.
+export interface Settle {
+  state: "" | "settled" | "stalled"; // "" = still working
+  still: number; // consecutive still frames
+  best: number; // best RMS since the last wake
+  sinceGain: number; // frames since best last improved by stallGain
+  px: Float32Array; // positions at settleBegin
+  py: Float32Array;
+}
+
+export const SETTLE = { still: 5e-4, stillFrames: 20, stallGain: 0.005, stallFrames: 60 };
+
+export function makeSettle(m: DiffMesh): Settle {
+  return { state: "", still: 0, best: Infinity, sinceGain: 0, px: new Float32Array(m.N * m.N), py: new Float32Array(m.N * m.N) };
+}
+export function settleWake(s: Settle): void {
+  s.state = ""; s.still = 0; s.best = Infinity; s.sinceGain = 0;
+}
+export function settleBegin(s: Settle, m: DiffMesh): void {
+  s.px.set(m.x); s.py.set(m.y);
+}
+export function settleCheck(s: Settle, m: DiffMesh, rms = rmsError(m)): Settle["state"] {
+  let moved = 0;
+  for (let i = 0; i < s.px.length; i++) {
+    moved = Math.max(moved, Math.abs(m.x[i] - s.px[i]), Math.abs(m.y[i] - s.py[i]));
+  }
+  s.still = moved < SETTLE.still ? s.still + 1 : 0;
+  if (rms < s.best * (1 - SETTLE.stallGain)) { s.best = rms; s.sinceGain = 0; } else s.sinceGain++;
+  if (s.still >= SETTLE.stillFrames) s.state = "settled";
+  else if (s.sinceGain >= SETTLE.stallFrames) s.state = "stalled";
+  return s.state;
+}
+
 // Soft circular brush onto the magnification field, in the mesh's CURRENT
 // (deformed) coordinate space. `delta` adds magnification; `target` (e.g. 1 for
 // erase) pulls toward a value. Returns true if anything changed.

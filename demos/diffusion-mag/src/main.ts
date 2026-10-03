@@ -5,6 +5,7 @@
 
 import {
   makeDiffMesh, diffuseStep, rmsError, paintField, resetPositions, clearField,
+  makeSettle, settleBegin, settleCheck, settleWake,
   DEFAULT_DIFF, type DiffMesh, type DiffParams,
 } from "./diffuse";
 
@@ -240,43 +241,17 @@ function draw(): void {
 
 let frameNo = 0;
 
-// Auto-idle: stop sweeping once the mesh has stopped moving or the residual has
-// stopped improving, and wake on anything that changes the solver's inputs.
-// Two exits, because a feasible field and an infeasible one end differently:
-//  - settled: every node moves < STILL per frame for STILL_FRAMES frames
-//    (5e-4 mesh units ≈ 0.1–0.2 screen px);
-//  - stalled: RMS hasn't improved by STALL_GAIN in STALL_FRAMES frames. A field
-//    whose mean z is well above 1 never goes still — the saturated region keeps
-//    shuffling ~1.5px a frame with the RMS flat — so stillness alone never fires.
-// Measured on painted fields: settles in 22–104 frames within a few % of the
-// best RMS seen over 1500 frames; the infeasible case stalls at frame ~71.
-const STILL = 5e-4, STILL_FRAMES = 20;
-const STALL_GAIN = 0.005, STALL_FRAMES = 60;
-const solver = { idle: "" as "" | "settled" | "stalled", still: 0, best: Infinity, lastGain: 0 };
-const prevX = new Float32Array(N * N), prevY = new Float32Array(N * N);
+// Auto-idle: stop sweeping once the relaxation has settled or stalled (see
+// diffuse.ts settleCheck), and wake on anything that changes the solver's inputs.
+const settle = makeSettle(mesh);
 function syncSolverState(): void {
-  el("solverState").textContent = !ui.running ? "paused" : solver.idle || "running";
+  el("solverState").textContent = !ui.running ? "paused" : settle.state || "running";
 }
-function wake(): void {
-  solver.idle = ""; solver.still = 0; solver.best = Infinity; solver.lastGain = frameNo;
-  syncSolverState();
-}
-function checkIdle(): void {
-  let moved = 0;
-  for (let i = 0; i < N * N; i++) {
-    moved = Math.max(moved, Math.abs(mesh.x[i] - prevX[i]), Math.abs(mesh.y[i] - prevY[i]));
-  }
-  solver.still = moved < STILL ? solver.still + 1 : 0;
-  const rms = rmsError(mesh);
-  if (rms < solver.best * (1 - STALL_GAIN)) { solver.best = rms; solver.lastGain = frameNo; }
-  if (solver.still >= STILL_FRAMES) solver.idle = "settled";
-  else if (frameNo - solver.lastGain >= STALL_FRAMES) solver.idle = "stalled";
-  if (solver.idle) syncSolverState();
-}
+function wake(): void { settleWake(settle); syncSolverState(); }
 
 function frame(): void {
-  if (ui.running && !solver.idle) {
-    prevX.set(mesh.x); prevY.set(mesh.y);
+  if (ui.running && !settle.state) {
+    settleBegin(settle, mesh);
     // Sweep direction restarts every frame (iter = k), so every displayed frame
     // ends on the same sweep parity. Near the solution the serpentine sweep
     // settles into a period-2 cycle (forward and backward sweeps trade a ~2px
@@ -285,7 +260,7 @@ function frame(): void {
     // never died out.
     for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, k);
     syncPos();
-    checkIdle();
+    if (settleCheck(settle, mesh)) syncSolverState();
   }
   draw();
   if ((frameNo++ & 15) === 0) el("rms").textContent = rmsError(mesh).toFixed(3);

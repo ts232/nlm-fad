@@ -4,7 +4,10 @@
 // for why the earlier point-cloud field was replaced). The legacy point-cloud
 // fields from field.ts stay selectable for comparison.
 
-import { makeDiffMesh, diffuseStep, resetPositions, rmsError, DEFAULT_DIFF, type DiffMesh, type DiffParams } from "./diffuse";
+import {
+  makeDiffMesh, diffuseStep, resetPositions, rmsError, DEFAULT_DIFF, type DiffMesh, type DiffParams,
+  makeSettle, settleBegin, settleCheck, settleWake,
+} from "./diffuse";
 import { computeDensityField, computeProximityField, warpLookup, type Planes } from "./field";
 import {
   computeFeatureField, shapesFromFeatures, legacyWeight, DEFAULT_FEATURE_FIELD,
@@ -244,16 +247,28 @@ function draw(ptCount: number): void {
   gl.disable(gl.BLEND);
 }
 
+// Auto-idle: stop sweeping once the relaxation has settled or stalled (see
+// diffuse.ts settleCheck). Every field change goes through computeField, which
+// wakes it; so do the solver params, Reset mesh and Play.
+const settle = makeSettle(mesh);
+function syncSolverState(): void {
+  el("solverState").textContent = !ui.running ? "paused" : !features ? "no face" : settle.state || "running";
+}
+function wake(): void { settleWake(settle); syncSolverState(); }
+
 let rmsTick = 0;
 function frame(): void {
-  if (fieldDirty) computeField();
-  if (ui.running && features) {
+  if (fieldDirty) { computeField(); wake(); }
+  if (ui.running && features && !settle.state) {
+    settleBegin(settle, mesh);
     for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, k);
     syncPos();
     // The residual is the honest read on whether the target is achievable at
     // all: a balanced field drives it toward 0, an infeasible one stalls or
-    // drifts back up. Cheap enough at 4 Hz.
-    if (++rmsTick % 15 === 0) el("rms").textContent = rmsError(mesh).toFixed(4);
+    // drifts back up. Computed every frame for the settle check; shown at 4 Hz.
+    const rms = rmsError(mesh);
+    if (settleCheck(settle, mesh, rms)) { syncSolverState(); el("rms").textContent = rms.toFixed(4); }
+    else if (++rmsTick % 15 === 0) el("rms").textContent = rms.toFixed(4);
   }
   draw(buildPoints());
   requestAnimationFrame(frame);
@@ -309,8 +324,8 @@ bindSlider("smooth", (v) => { ff.smoothPasses = Math.round(v); fieldDirty = true
 for (const key of FEATURES) {
   bindSlider(`str-${key}`, (v) => { ui.mag[key] = v; rebuildPoints(); fieldDirty = true; }, `str-${key}Val`, times);
 }
-bindSlider("refine", (v) => (params.refineCoeff = v), "refineVal");
-bindSlider("clampEps", (v) => (params.clampEps = v), "clampEpsVal");
+bindSlider("refine", (v) => { params.refineCoeff = v; wake(); }, "refineVal");
+bindSlider("clampEps", (v) => { params.clampEps = v; wake(); }, "clampEpsVal");
 bindSlider("iters", (v) => (ui.itersPerFrame = Math.round(v)), "itersVal", (v) => String(Math.round(v)));
 
 el<HTMLInputElement>("balance").addEventListener("change", (e) => {
@@ -336,8 +351,8 @@ el<HTMLInputElement>("showPoints").addEventListener("change", (e) => { ui.showPo
 
 const runBtn = el<HTMLButtonElement>("run");
 function syncRun() { runBtn.textContent = ui.running ? "Pause" : "Play"; }
-runBtn.addEventListener("click", () => { ui.running = !ui.running; syncRun(); });
-el<HTMLButtonElement>("resetMesh").addEventListener("click", () => { resetPositions(mesh); syncPos(); });
+runBtn.addEventListener("click", () => { ui.running = !ui.running; syncRun(); wake(); });
+el<HTMLButtonElement>("resetMesh").addEventListener("click", () => { resetPositions(mesh); syncPos(); wake(); });
 el<HTMLInputElement>("file").addEventListener("change", (e) => { const f = (e.target as HTMLInputElement).files?.[0]; if (f) loadFace(f); });
 
 // ---------------------------------------------------------------------------
