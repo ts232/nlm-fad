@@ -196,7 +196,9 @@ function frame(t: number): void {
   if (ui.running) {
     stepPlanes(planes, dt, ui.speed);
     computeField();
-    for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, frameNo + k);
+    // iter = k, not frameNo + k: every frame must end on the same sweep parity,
+    // or the serpentine sweep's period-2 cycle shows up as frame-to-frame flicker.
+    for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, k);
     syncPos();
   }
   const pc = buildPlanes();

@@ -130,6 +130,9 @@ function moveNeighbour(
 // limited, so coarse strides add overhead without payoff. The real levers are
 // `clampEps` (per-step cap) and sweep count. stride is kept for completeness;
 // the demo runs stride 1. `iter` alternates sweep direction (serpentine).
+// Near the solution the two directions settle into a period-2 cycle (each sweep
+// moves nodes ~2px and the next moves them back), so callers must sample the
+// mesh at a fixed parity — restart `iter` at 0 each frame, never a running count.
 export function diffuseStep(m: DiffMesh, p: DiffParams, iter: number, stride = 1): void {
   const N = m.N;
   const s = stride;

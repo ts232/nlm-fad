@@ -179,7 +179,6 @@ const ui = {
   showField: true,
   showMesh: true,
 };
-let iterCounter = 0;
 let painting = false;
 
 function syncPos(): void {
@@ -242,7 +241,13 @@ function draw(): void {
 let frameNo = 0;
 function frame(): void {
   if (ui.running) {
-    for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, iterCounter++);
+    // Sweep direction restarts every frame (iter = k), so every displayed frame
+    // ends on the same sweep parity. Near the solution the serpentine sweep
+    // settles into a period-2 cycle (forward and backward sweeps trade a ~2px
+    // displacement back and forth); a running counter with an odd sweep count
+    // showed alternate halves of that cycle on alternate frames, a flicker that
+    // never died out.
+    for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, k);
     syncPos();
   }
   draw();
@@ -362,10 +367,10 @@ const runBtn = el<HTMLButtonElement>("run");
 function syncRun(): void { runBtn.textContent = ui.running ? "Pause solver" : "Run solver"; }
 runBtn.addEventListener("click", () => { ui.running = !ui.running; syncRun(); });
 el<HTMLButtonElement>("step").addEventListener("click", () => {
-  for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, iterCounter++);
+  for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, k);
   syncPos();
 });
-el<HTMLButtonElement>("resetMesh").addEventListener("click", () => { resetPositions(mesh); iterCounter = 0; syncPos(); });
+el<HTMLButtonElement>("resetMesh").addEventListener("click", () => { resetPositions(mesh); syncPos(); });
 el<HTMLButtonElement>("clearField").addEventListener("click", () => { clearField(mesh); syncZ(); });
 
 // ---------------------------------------------------------------------------
