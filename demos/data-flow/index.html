@@ -29,6 +29,17 @@
       .readout { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 6px; }
       .readout b { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 500; }
       .hint { color: var(--muted); font-size: 11px; margin-top: 12px; }
+
+      /* Narrow screens (phones, and the Works post's iframe on a phone): stack the controls under
+         the canvas instead of squeezing them beside it. The page then grows to its content, and
+         the script at the end of <body> reports that height so the embedding frame can fit it. */
+      @media (max-width: 600px) {
+        html, body { height: auto; }
+        body { grid-template-columns: 1fr; height: auto; }
+        #stage { padding: 12px; aspect-ratio: 1 / 1; }
+        #gl { width: 100%; }
+        #panel { border-left: none; border-top: 1px solid var(--line); overflow: visible; }
+      }
     </style>
     <!-- HolisticSofa analytics: one pageview + one engagement beacon (served by the gateway; 404s harmlessly elsewhere) -->
     <script src="/js/hs-beacon.js" data-app="nlm-fad" defer></script>
@@ -95,5 +106,18 @@
     </aside>
 
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      // Auto-height for the Works post's iframe (holisticsofa-works Iframe.astro). Only when
+      // narrow: there the page stacks and grows to its content. Wide, the frame keeps its fixed height.
+      (function () {
+        if (window.parent === window || !window.ResizeObserver) return;
+        var narrow = window.matchMedia('(max-width: 600px)');
+        function report() {
+          if (narrow.matches) window.parent.postMessage({ type: 'hoso-embed-height', height: document.documentElement.scrollHeight }, '*');
+        }
+        new ResizeObserver(report).observe(document.body);
+        narrow.addEventListener('change', report);
+      })();
+    </script>
   </body>
 </html>
