@@ -126,12 +126,13 @@ node --experimental-strip-types test/diagnose.ts
 - Best on a reasonably front-facing, well-lit face (TinyFaceDetector). Profile /
   tiny / occluded faces may not detect.
 - The vendored face-api assets (`public/vendor`, `public/models`) are MIT
-  (face-api.js) and committed so the demo is self-contained. `sample-face.png`
-  is an AI-generated portrait — not a real person.
+  (face-api.js) and committed so the demo is self-contained. `sample-face.jpg`
+  is an AI-generated portrait — not a real person. It ships as a 280 KB JPEG; the 1.8 MB PNG
+  original, the one the landmark fixture came from, is kept in `test/`.
 - This is the template for any feature→field source: swap the landmark detector
   for edges / saliency / corners and nothing downstream changes.
 - `test/landmarks.sample.json` is the real 68-point detection for
-  `sample-face.png`, dumped once from the browser so the field maths is testable
+  `test/sample-face.png`, dumped once from the browser so the field maths is testable
   headless. Detection itself is still browser-only.
 - Next candidates: a **per-feature falloff width** (an eye and a jawline want
   different skirts from one global slider), and anisotropic kernels that follow

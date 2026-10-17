@@ -359,5 +359,5 @@ el<HTMLInputElement>("file").addEventListener("change", (e) => { const f = (e.ta
 // Go
 // ---------------------------------------------------------------------------
 syncRun(); syncPos(); syncMethodUI();
-loadFace(import.meta.env.BASE_URL + "sample-face.png");
+loadFace(import.meta.env.BASE_URL + "sample-face.jpg");
 requestAnimationFrame(frame);
