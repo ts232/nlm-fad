@@ -128,3 +128,82 @@ export function warpLookup(m: DiffMesh, px: number, py: number, out: [number, nu
   out[0] = m.x[i00] * w00 + m.x[i10] * w10 + m.x[i01] * w01 + m.x[i11] * w11;
   out[1] = m.y[i00] * w00 + m.y[i10] * w10 + m.y[i01] * w01 + m.y[i11] * w11;
 }
+
+// ---------------------------------------------------------------------------
+// One lens per aircraft (2026-11-11). Density sums, so a stream of traffic piles into a ridge
+// and a full sky saturates everywhere; proximity picks a weight by nearest neighbour, which
+// jumps across Voronoi seams (CLAUDE.md "Gotchas"). This gives every aircraft its own smooth,
+// compact bump of height `peak − 1` inside `radius`, joins overlapping bumps with a soft union
+// (Σ eᵖ)^(1/p) instead of a sum, so two planes side by side don't ask for double, and then
+// balances the field to mean 1: a pinned frame conserves area, so the room each aircraft gets
+// is taken evenly from the rest of the map (the detail-in-context trade). The same recipe as
+// face-magnify's featureField.ts, applied to moving points.
+// ---------------------------------------------------------------------------
+export function computeLensField(m: DiffMesh, p: Planes, peak: number, radius: number, union = 3, floor = 0.35): void {
+  const N = m.N;
+  const h = 2 / (N - 1);
+  const z = m.z;
+  z.fill(0);
+  const amp = Math.max(0, peak - 1);
+  const pw = p.w;
+  for (let k = 0; k < p.n; k++) {
+    const w = pw ? pw[k] : 1;
+    if (w <= 0) continue;
+    const px = p.x[k], py = p.y[k];
+    const c0 = Math.max(0, Math.floor((px - radius + 1) / h)), c1 = Math.min(N - 1, Math.ceil((px + radius + 1) / h));
+    const r0 = Math.max(0, Math.floor((py - radius + 1) / h)), r1 = Math.min(N - 1, Math.ceil((py + radius + 1) / h));
+    for (let r = r0; r <= r1; r++) {
+      const dy = r * h - 1 - py;
+      for (let c = c0; c <= c1; c++) {
+        const dx = c * h - 1 - px;
+        const q = (dx * dx + dy * dy) / (radius * radius);
+        if (q >= 1) continue;
+        const e = amp * w * (1 - q) * (1 - q); // C¹ at the rim
+        z[r * N + c] += Math.pow(e, union);
+      }
+    }
+  }
+  const inv = 1 / union;
+  for (let i = 0; i < z.length; i++) z[i] = 1 + (z[i] > 0 ? Math.pow(z[i], inv) : 0);
+  balanceField(z, floor);
+}
+
+// Shift the field so its mean is 1, never below `floor` (copied from face-magnify's
+// featureField.ts; keep the two in sync until the cores become one package).
+export function balanceField(z: Float32Array, floor: number, maxIter = 24): number {
+  const n = z.length;
+  let mean = 0;
+  for (let i = 0; i < n; i++) mean += z[i];
+  mean /= n;
+  for (let k = 0; k < maxIter; k++) {
+    const err = mean - 1;
+    if (Math.abs(err) < 1e-4) break;
+    let free = 0;
+    for (let i = 0; i < n; i++) if (z[i] - err > floor) free++;
+    if (free === 0) break;
+    const shift = (err * n) / free;
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const v = z[i] - shift;
+      z[i] = v < floor ? floor : v;
+      sum += z[i];
+    }
+    mean = sum / n;
+  }
+  return mean;
+}
+
+// Magnification the mesh actually delivers at a material point: the deformed area of the cell
+// under it over the cell's rest area. What the readout shows next to the target.
+export function deliveredAt(m: DiffMesh, px: number, py: number): number {
+  const N = m.N;
+  let c = Math.floor((px + 1) * 0.5 * (N - 1)), r = Math.floor((py + 1) * 0.5 * (N - 1));
+  if (c < 0 || r < 0 || c > N - 2 || r > N - 2) return NaN;
+  const a = r * N + c, b = a + 1, d = a + N + 1, e = a + N;
+  const X = m.x, Y = m.y;
+  const area = 0.5 * Math.abs(
+    (X[a] * Y[b] - X[b] * Y[a]) + (X[b] * Y[d] - X[d] * Y[b]) + (X[d] * Y[e] - X[e] * Y[d]) + (X[e] * Y[a] - X[a] * Y[e]),
+  );
+  const h = 2 / (N - 1);
+  return area / (h * h);
+}

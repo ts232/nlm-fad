@@ -13,7 +13,7 @@ modules, with four standalone browser demos.
 |---|---|---|
 | [Closed-form fisheye](demos/fisheye-2d/) | Aim a radial lens at a textured grid — three kernels, an optional legible linear centre | A |
 | [Paint a field](demos/diffusion-mag/) | Paint where you want magnification and watch a mesh relax to deliver it | B · brush |
-| [Traffic over a zone](demos/data-flow/) | Moving data points *become* the field; the mesh follows the traffic | B · data |
+| [Traffic over a zone](demos/data-flow/) | Traffic into Reagan National: each aircraft *becomes* part of the field, and the mesh follows the streams | B · data |
 | [Magnify a face](demos/face-magnify/) | 68 facial landmarks outline the features; eyes, nose and mouth magnify | B · image features |
 
 ## The idea

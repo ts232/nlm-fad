@@ -1,10 +1,12 @@
-// main.ts — data-driven magnification. Planes fly over a zone; their density (or
-// proximity) becomes the magnification field; the diffusion solver deforms the
-// mesh to satisfy it; the planes are drawn riding the warp. Reuses the Engine B
-// solver (diffuse.ts) verbatim — only the FIELD SOURCE changes (data, not paint).
+// main.ts — data-driven magnification. Traffic into Reagan National (traffic.ts)
+// gives each aircraft its own lens (field.ts computeLensField); the diffusion
+// solver deforms the mesh to satisfy the field; the aircraft are drawn riding the
+// warp. Reuses the Engine B solver (diffuse.ts) verbatim — only the FIELD SOURCE
+// changes (data, not paint).
 
 import { makeDiffMesh, diffuseStep, rmsError, resetPositions, DEFAULT_DIFF, type DiffMesh, type DiffParams } from "./diffuse";
-import { makePlanes, stepPlanes, computeDensityField, computeProximityField, warpLookup, type Planes } from "./field";
+import { computeDensityField, computeProximityField, computeLensField, deliveredAt, warpLookup } from "./field";
+import { Traffic, type Flow } from "./traffic";
 
 const canvas = document.getElementById("gl") as HTMLCanvasElement;
 const gl = canvas.getContext("webgl2", { antialias: true, premultipliedAlpha: false })!;
@@ -85,13 +87,21 @@ const lineBuf = gl.createBuffer()!; let lineCount = 0;
   gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, lineBuf); gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
 }
 
-// plane markers — their own VAO/buffer (a_pos only; flat-colour triangles)
-const MAX_PLANES = 600;
-const planeVerts = new Float32Array(MAX_PLANES * 3 * 2);
+// aircraft markers — their own VAO/buffer (a_pos only; flat-colour triangles):
+// planes are 3 vertices, helicopters a 6-vertex diamond
+const MAX_PLANES = 120;
+const planeVerts = new Float32Array(MAX_PLANES * 6 * 2);
 const planesVao = gl.createVertexArray()!;
 gl.bindVertexArray(planesVao);
 const planesBuf = gl.createBuffer()!;
 gl.bindBuffer(gl.ARRAY_BUFFER, planesBuf); gl.bufferData(gl.ARRAY_BUFFER, planeVerts, gl.DYNAMIC_DRAW);
+gl.enableVertexAttribArray(loc.a_pos); gl.vertexAttribPointer(loc.a_pos, 2, gl.FLOAT, false, 0, 0);
+// flight paths — line segments, re-warped every frame so the streams bend with the map
+const pathVao = gl.createVertexArray()!;
+gl.bindVertexArray(pathVao);
+const pathBuf = gl.createBuffer()!;
+let pathVerts = new Float32Array(0);
+gl.bindBuffer(gl.ARRAY_BUFFER, pathBuf);
 gl.enableVertexAttribArray(loc.a_pos); gl.vertexAttribPointer(loc.a_pos, 2, gl.FLOAT, false, 0, 0);
 gl.bindVertexArray(null);
 
@@ -109,18 +119,19 @@ gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new
 // State
 // ---------------------------------------------------------------------------
 const params: DiffParams = { ...DEFAULT_DIFF };
-let planes: Planes = makePlanes(160);
+const traffic = new Traffic("south");
 const ui = {
   running: true,
-  itersPerFrame: 18,        // the field moves each frame; enough sweeps to track it
-  method: "density" as "density" | "proximity",
-  volume: 4,
-  radius: 0.2,
+  itersPerFrame: 24,        // the field moves each frame; enough sweeps to track it
+  method: "lens" as "lens" | "density" | "proximity",
+  peak: 4,                  // magnification asked for at each aircraft
+  radius: 0.14,
   speed: 1,
   showImage: true,
   showField: false,
   showMesh: true,
   showPlanes: true,
+  showPaths: true,
 };
 
 function syncPos(): void {
@@ -130,25 +141,67 @@ function syncPos(): void {
 function syncZ(): void { gl.bindBuffer(gl.ARRAY_BUFFER, zBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.z); }
 
 const tmp: [number, number] = [0, 0];
-function buildPlanes(): number {
-  const size = 0.016; let o = 0;
-  for (let i = 0; i < planes.n; i++) {
-    warpLookup(mesh, planes.x[i], planes.y[i], tmp);
-    const cx = tmp[0], cy = tmp[1];
-    let hx = planes.vx[i], hy = planes.vy[i]; const L = Math.hypot(hx, hy) || 1; hx /= L; hy /= L;
-    const px = -hy, py = hx;
-    planeVerts[o++] = cx + hx * size * 1.7; planeVerts[o++] = cy + hy * size * 1.7;
-    planeVerts[o++] = cx - hx * size + px * size * 0.9; planeVerts[o++] = cy - hy * size + py * size * 0.9;
-    planeVerts[o++] = cx - hx * size - px * size * 0.9; planeVerts[o++] = cy - hy * size - py * size * 0.9;
+// Planes first, then helicopters, so each kind is one draw call in its own colour.
+// A glyph grows in with its field and shrinks away with it.
+function buildGlyphs(): [number, number] {
+  const p = traffic.planes; let o = 0;
+  const put = (x: number, y: number) => { planeVerts[o++] = x; planeVerts[o++] = y; };
+  for (const pass of ["plane", "heli"] as const) {
+    for (let i = 0; i < p.n; i++) {
+      if (traffic.kind[i] !== pass) continue;
+      warpLookup(mesh, p.x[i], p.y[i], tmp);
+      const cx = tmp[0], cy = tmp[1], hx = p.vx[i], hy = p.vy[i], px = -hy, py = hx;
+      const g = 0.35 + 0.65 * p.w![i];
+      if (pass === "plane") {
+        const s = 0.02 * g;
+        put(cx + hx * s * 1.7, cy + hy * s * 1.7);
+        put(cx - hx * s + px * s * 0.95, cy - hy * s + py * s * 0.95);
+        put(cx - hx * s - px * s * 0.95, cy - hy * s - py * s * 0.95);
+      } else {
+        const s = 0.016 * g;
+        put(cx + hx * s * 1.4, cy + hy * s * 1.4); put(cx + px * s, cy + py * s); put(cx - px * s, cy - py * s);
+        put(cx - hx * s * 1.4, cy - hy * s * 1.4); put(cx - px * s, cy - py * s); put(cx + px * s, cy + py * s);
+      }
+    }
   }
-  gl.bindBuffer(gl.ARRAY_BUFFER, planesBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, planeVerts);
-  return planes.n * 3;
+  gl.bindBuffer(gl.ARRAY_BUFFER, planesBuf); gl.bufferSubData(gl.ARRAY_BUFFER, 0, planeVerts.subarray(0, o));
+  let nPlane = 0; for (let i = 0; i < p.n; i++) if (traffic.kind[i] === "plane") nPlane++;
+  return [nPlane * 3, (p.n - nPlane) * 6];
+}
+
+function buildPaths(): number {
+  const paths = traffic.paths();
+  let segs = 0; for (const q of paths) segs += q.x.length - 1;
+  if (pathVerts.length < segs * 4) pathVerts = new Float32Array(segs * 4);
+  let o = 0;
+  for (const q of paths) {
+    for (let i = 0; i < q.x.length; i++) {
+      warpLookup(mesh, q.x[i], q.y[i], tmp);
+      if (i > 0) { pathVerts[o++] = tmp[0]; pathVerts[o++] = tmp[1]; }
+      if (i < q.x.length - 1) { pathVerts[o++] = tmp[0]; pathVerts[o++] = tmp[1]; }
+    }
+  }
+  gl.bindBuffer(gl.ARRAY_BUFFER, pathBuf); gl.bufferData(gl.ARRAY_BUFFER, pathVerts.subarray(0, o), gl.DYNAMIC_DRAW);
+  return o / 2;
 }
 
 function computeField(): void {
-  if (ui.method === "density") computeDensityField(mesh, planes, ui.volume, ui.radius);
-  else computeProximityField(mesh, planes, ui.volume, ui.radius);
+  const p = traffic.planes;
+  if (ui.method === "lens") computeLensField(mesh, p, ui.peak, ui.radius);
+  else if (ui.method === "density") computeDensityField(mesh, p, ui.peak - 1, ui.radius);
+  else computeProximityField(mesh, p, ui.peak - 1, ui.radius);
   syncZ();
+}
+
+// Median magnification the mesh delivers at the aircraft on screen (fully faded in).
+function delivered(): number {
+  const p = traffic.planes, v: number[] = [];
+  for (let i = 0; i < p.n; i++) {
+    if (p.w![i] < 0.99 || Math.abs(p.x[i]) > 0.95 || Math.abs(p.y[i]) > 0.95) continue;
+    const d = deliveredAt(mesh, p.x[i], p.y[i]); if (Number.isFinite(d)) v.push(d);
+  }
+  if (!v.length) return NaN;
+  v.sort((a, b) => a - b); return v[v.length >> 1];
 }
 
 // ---------------------------------------------------------------------------
@@ -160,12 +213,12 @@ function resize(): void {
   const px = Math.round(size * dpr);
   if (canvas.width !== px || canvas.height !== px) canvas.width = canvas.height = px;
 }
-function draw(planeCount: number): void {
+function draw(glyphs: [number, number]): void {
   resize();
   gl.viewport(0, 0, canvas.width, canvas.height);
   gl.clearColor(0.07, 0.07, 0.08, 1); gl.clear(gl.COLOR_BUFFER_BIT);
   gl.useProgram(prog);
-  gl.uniform1f(loc.u_maxZ, Math.max(2, ui.volume));
+  gl.uniform1f(loc.u_maxZ, Math.max(2, ui.peak));
 
   gl.bindVertexArray(vao);
   if (ui.showImage) {
@@ -182,10 +235,18 @@ function draw(planeCount: number): void {
     gl.uniform1i(loc.u_mode, 0); gl.uniform4f(loc.u_color, 0.62, 0.64, 0.72, ui.showImage ? 0.35 : 0.5);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, lineBuf); gl.drawElements(gl.LINES, lineCount, gl.UNSIGNED_INT, 0);
   }
+  if (ui.showPaths) {
+    const n = buildPaths();
+    gl.bindVertexArray(pathVao);
+    gl.uniform1i(loc.u_mode, 0); gl.uniform4f(loc.u_color, 0.85, 0.30, 0.15, ui.showImage ? 0.55 : 0.6);
+    gl.drawArrays(gl.LINES, 0, n);
+  }
   if (ui.showPlanes) {
     gl.bindVertexArray(planesVao);
     gl.uniform1i(loc.u_mode, 0); gl.uniform4f(loc.u_color, 0.95, 0.42, 0.26, 0.95);
-    gl.drawArrays(gl.TRIANGLES, 0, planeCount);
+    gl.drawArrays(gl.TRIANGLES, 0, glyphs[0]);
+    gl.uniform4f(loc.u_color, 0.50, 0.18, 0.78, 0.95); // purple: the one colour the map doesn't use
+    gl.drawArrays(gl.TRIANGLES, glyphs[0], glyphs[1]);
   }
   gl.disable(gl.BLEND);
 }
@@ -194,16 +255,19 @@ let lastT = 0, frameNo = 0;
 function frame(t: number): void {
   const dt = lastT ? Math.min(0.05, (t - lastT) / 1000) : 0.016; lastT = t;
   if (ui.running) {
-    stepPlanes(planes, dt, ui.speed);
+    traffic.step(dt, ui.speed);
     computeField();
     // iter = k, not frameNo + k: every frame must end on the same sweep parity,
     // or the serpentine sweep's period-2 cycle shows up as frame-to-frame flicker.
     for (let k = 0; k < ui.itersPerFrame; k++) diffuseStep(mesh, params, k);
     syncPos();
   }
-  const pc = buildPlanes();
-  draw(pc);
-  if ((frameNo++ & 15) === 0) el("rms").textContent = rmsError(mesh).toFixed(3);
+  draw(buildGlyphs());
+  if ((frameNo++ & 15) === 0) {
+    el("rms").textContent = rmsError(mesh).toFixed(3);
+    const d = delivered();
+    el("delivered").textContent = Number.isFinite(d) ? `${d.toFixed(2)}×` : "—";
+  }
   requestAnimationFrame(frame);
 }
 
@@ -216,9 +280,9 @@ function bindSlider(id: string, set: (v: number) => void, fmtId: string, fmt?: (
   const update = () => { const v = parseFloat(s.value); set(v); el(fmtId).textContent = fmt ? fmt(v) : v.toFixed(2); };
   s.addEventListener("input", update); update();
 }
-bindSlider("count", (v) => { const n = Math.round(v); if (n !== planes.n) planes = makePlanes(n); }, "countVal", (v) => String(Math.round(v)));
+bindSlider("level", (v) => (traffic.level = v), "levelVal", (v) => `${v.toFixed(2)}×`);
 bindSlider("speed", (v) => (ui.speed = v), "speedVal");
-bindSlider("volume", (v) => (ui.volume = v), "volumeVal", (v) => `${v.toFixed(1)}×`);
+bindSlider("peak", (v) => (ui.peak = v), "peakVal", (v) => `${v.toFixed(1)}×`);
 bindSlider("radius", (v) => (ui.radius = v), "radiusVal");
 bindSlider("refine", (v) => (params.refineCoeff = v), "refineVal");
 bindSlider("clampEps", (v) => (params.clampEps = v), "clampEpsVal");
@@ -231,15 +295,23 @@ el<HTMLInputElement>("showImage").addEventListener("change", (e) => { ui.showIma
 el<HTMLInputElement>("showField").addEventListener("change", (e) => { ui.showField = (e.target as HTMLInputElement).checked; });
 el<HTMLInputElement>("showMesh").addEventListener("change", (e) => { ui.showMesh = (e.target as HTMLInputElement).checked; });
 el<HTMLInputElement>("showPlanes").addEventListener("change", (e) => { ui.showPlanes = (e.target as HTMLInputElement).checked; });
+el<HTMLInputElement>("showPaths").addEventListener("change", (e) => { ui.showPaths = (e.target as HTMLInputElement).checked; });
+el<HTMLSelectElement>("flow").addEventListener("change", (e) => {
+  const t = e.target as HTMLSelectElement; traffic.setFlow(t.value as Flow); t.blur();
+});
 
 const runBtn = el<HTMLButtonElement>("run");
 function syncRun() { runBtn.textContent = ui.running ? "Pause" : "Play"; }
 runBtn.addEventListener("click", () => { ui.running = !ui.running; syncRun(); });
-el<HTMLButtonElement>("reseed").addEventListener("click", () => { planes = makePlanes(planes.n, (frameNo % 1000) + 2); });
+el<HTMLButtonElement>("reseed").addEventListener("click", () => { traffic.setFlow(traffic.flow); });
 el<HTMLButtonElement>("resetMesh").addEventListener("click", () => { resetPositions(mesh); syncPos(); });
 
 // ---------------------------------------------------------------------------
 // Go
 // ---------------------------------------------------------------------------
-syncRun(); syncPos(); computeField();
+syncRun(); computeField();
+// Warm start: the sky is already full (traffic.ts pre-runs the routes), so relax the mesh to it
+// before the first frame instead of opening on a flat map that takes seconds to catch up.
+for (let k = 0; k < 400; k++) diffuseStep(mesh, params, k);
+syncPos();
 requestAnimationFrame(frame);
