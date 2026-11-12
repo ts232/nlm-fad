@@ -30,7 +30,7 @@ ssh "${REMOTE_USER}@${REMOTE_HOST}" "mkdir -p '${REMOTE_PATH}'"
 rsync -az --delete _site/ "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_PATH}/"
 
 echo "== verify"
-for p in "" fisheye-2d/ diffusion-mag/ data-flow/ face-magnify/; do
+for p in "" fisheye-2d/ diffusion-mag/ face-magnify/; do
   code=$(curl -s -o /dev/null -w '%{http_code}' "https://holisticsofa.ai/nlm-fad/${p}")
   echo "  /nlm-fad/${p}  ${code}"
 done

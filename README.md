@@ -5,7 +5,7 @@ for my PhD at Indiana University in the mid-1990s (Keahey & Robertson, IEEE
 InfoVis 1996 and 1997; Keahey, InfoVis 1998). The original was ~29,000 lines of
 C++ for SGI / GLUT and later a commercial SDK (Magnivista, 1995–2005). This repo
 rebuilds the two engines at its core as small, dependency-free TypeScript
-modules, with four standalone browser demos.
+modules, with three standalone browser demos.
 
 **Live demos:** <https://holisticsofa.ai/nlm-fad/>
 
@@ -13,8 +13,9 @@ modules, with four standalone browser demos.
 |---|---|---|
 | [Closed-form fisheye](demos/fisheye-2d/) | Aim a radial lens at a textured grid — three kernels, an optional legible linear centre | A |
 | [Paint a field](demos/diffusion-mag/) | Paint where you want magnification and watch a mesh relax to deliver it | B · brush |
-| [Traffic over a zone](demos/data-flow/) | Traffic into Reagan National: each aircraft *becomes* part of the field, and the mesh follows the streams | B · data |
-| [Magnify a face](demos/face-magnify/) | 68 facial landmarks outline the features; eyes, nose and mouth magnify | B · image features |
+| [Magnify a face](demos/face-magnify/) | 68 facial landmarks outline the features; eyes, nose and mouth magnify | B · data: facial features |
+
+*Retired:* [`demos/data-flow/`](demos/data-flow/) (aircraft traffic driving the field) stays in the repo for history but is no longer on the site. Magnifying the space between approaching aircraft is the wrong lesson for anyone who has to judge their separation, so the face is now the data-driven example.
 
 ## The idea
 
@@ -36,8 +37,8 @@ fixed function of distance from the focus. FAD separated two things:
   moving-mesh methods and optimal-transport meshing, arrived at from the
   visualization side.
 
-The three Engine-B demos share **one solver** and differ only in **where the
-field comes from**: a brush, moving data, or features extracted from an image.
+The two Engine-B demos share **one solver** and differ only in **where the
+field comes from**: a brush, or data (features extracted from an image).
 That seam is the whole architecture, and it's the thing the port was built to
 show. [`NLM-ORIENTATION.md`](NLM-ORIENTATION.md) has the math, a short
 numerical-methods primer, the related work, and the porting notes.
@@ -50,7 +51,7 @@ relevant paper), so they never collide and can run side by side.
 ```bash
 cd demos/fisheye-2d    && npm install && npm run dev   # → http://localhost:1995
 cd demos/diffusion-mag && npm install && npm run dev   # → http://localhost:1996
-cd demos/data-flow     && npm install && npm run dev   # → http://localhost:1997
+cd demos/data-flow     && npm install && npm run dev   # → http://localhost:1997  (retired; not on the site)
 cd demos/face-magnify  && npm install && npm run dev   # → http://localhost:1998
 ```
 

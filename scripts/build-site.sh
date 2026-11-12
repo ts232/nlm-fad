@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# build-site.sh — build all four demos under a common base path and assemble
+# build-site.sh — build the site's three demos under a common base path and assemble
 # the static site in _site/ (landing page + one subdirectory per demo).
 #
 #   scripts/build-site.sh              # base /nlm-fad/  (GitHub Pages project site)
@@ -9,7 +9,8 @@ cd "$(dirname "$0")/.."
 
 BASE="${SITE_BASE:-/nlm-fad/}"
 OUT="_site"
-DEMOS=(fisheye-2d diffusion-mag data-flow face-magnify)
+# data-flow is retired from the site (2026-11-11); it stays in demos/ for history.
+DEMOS=(fisheye-2d diffusion-mag face-magnify)
 
 rm -rf "$OUT"
 mkdir -p "$OUT"

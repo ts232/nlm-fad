@@ -1,5 +1,12 @@
 # Data-driven magnification (traffic over a zone) — FAD demo
 
+> **Retired from the site, 2026-11-11 — kept for history.** Magnifying the space between aircraft
+> is the wrong lesson: the last thing an air traffic controller wants is to see more separation
+> between two approaching planes than there really is. The face demo (`../face-magnify/`) is now
+> the data-driven example. This demo still builds and runs locally (port 1997); it is not in
+> `scripts/build-site.sh`. The notes below describe the original random-planes version; the
+> Reagan National rebuild of the same day is described in `NLM-ORIENTATION.md` §8.4.
+
 The data-driven mode of FAD: the magnification field isn't painted, it's
 **derived from data**. Planes fly across a zone; their **density** (or
 **proximity**) becomes the magnification field; the diffusion solver continuously

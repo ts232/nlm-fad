@@ -27,7 +27,7 @@ The Engine B demos differ **only in where the field comes from**: paint it, deri
 |---|---|---|---|
 | `fisheye-2d` | 1995 | closed-form fisheye on a grid/image | — (Engine A) |
 | `diffusion-mag` | 1996 | paint a magnification field, watch it solve | brush |
-| `data-flow` | 1997 | traffic into Reagan National → a lens per aircraft (density/proximity for comparison) | moving data points |
+| `data-flow` | 1997 | **retired from the site 2026-11-11**, kept for history: traffic into Reagan National → a lens per aircraft | moving data points |
 | `face-magnify` | 1998 | magnify a face's features | face-api 68 landmarks |
 
 Ports are pinned (`strictPort`) by relevant paper year (1995 TR455 · 1996 InfoVis · 1997 apps/2d · 1998 detail-in-context). The user is "sick of port management" — **never let demos collide; always pin a new unique port.**

@@ -30,12 +30,12 @@
 <body>
 <main>
   <h1>NLM-FAD — Nonlinear Magnification</h1>
-  <p class="sub">The author's TypeScript / WebGL2 port of his 1990s focus+context toolkit. Four demos, two engines, one seam.</p>
+  <p class="sub">The author's TypeScript / WebGL2 port of his 1990s focus+context toolkit. Three demos, two engines, one seam.</p>
 
   <p>Focus+context displays magnify what you're looking at while keeping the rest on screen, compressed.
      <strong>Engine A</strong> is the classic approach: aim a closed-form lens. <strong>Engine B</strong> is FAD's
      contribution: say <em>how much magnification you want, where</em> — a field — and solve for a mesh that delivers it.
-     The three Engine-B demos share one solver and differ only in where the field comes from.</p>
+     The two Engine-B demos share one solver and differ only in where the field comes from: a brush, or data.</p>
 
   <div class="grid">
     <a class="card" href="./fisheye-2d/">
@@ -48,13 +48,8 @@
       <h2>Paint a field</h2>
       <p>Paint where you want magnification and watch the mesh relax until each region's area matches what you asked for.</p>
     </a>
-    <a class="card" href="./data-flow/">
-      <div class="eng">Engine B · moving data</div>
-      <h2>Traffic over a zone</h2>
-      <p>Traffic into Reagan National: planes stream along the Potomac and helicopters run the rivers. Each aircraft asks for its own lens, and the mesh follows the streams.</p>
-    </a>
     <a class="card" href="./face-magnify/">
-      <div class="eng">Engine B · image features</div>
+      <div class="eng">Engine B · data: facial features</div>
       <h2>Magnify a face</h2>
       <p>68 facial landmarks outline each feature; a smooth kernel around the outline magnifies it while the periphery compresses to pay for it. Drop in your own photo.</p>
     </a>
