@@ -1,4 +1,4 @@
-# NLM-FAD — Nonlinear Magnification, thirty years on
+# NLM-FAD — my PhD toolkit, rebuilt and open source
 
 A TypeScript / WebGL2 port of **FAD**, the nonlinear-magnification toolkit I wrote
 for my PhD at Indiana University in the mid-1990s (Keahey & Robertson, IEEE
